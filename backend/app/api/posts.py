@@ -6,6 +6,8 @@ from app.schemas.post import PostCreate, PostResponse, FeedResponse
 from app.services.post import PostService
 from app.services.notification import NotificationService
 from app.models.user import User
+from app.models.connection import Connection, ConnectionStatus
+from sqlalchemy import or_
 
 router = APIRouter(
     prefix="/api/posts",
@@ -33,11 +35,27 @@ def create_post(
     # Get user info
     user = db.query(User).filter(User.id == user_id).first()
     
-    # Create notifications for all other users
-    all_users = db.query(User).filter(User.id != user_id).all()
-    for other_user in all_users:
+    # Get accepted connections (friends only)
+    accepted_connections = db.query(Connection).filter(
+        Connection.status == ConnectionStatus.ACCEPTED,
+        or_(
+            Connection.sender_id == user_id,
+            Connection.receiver_id == user_id
+        )
+    ).all()
+    
+    # Extract friend IDs
+    friend_ids = set()
+    for conn in accepted_connections:
+        if conn.sender_id == user_id:
+            friend_ids.add(conn.receiver_id)
+        else:
+            friend_ids.add(conn.sender_id)
+    
+    # Create notifications only for friends
+    for friend_id in friend_ids:
         NotificationService.create_notification(
-            user_id=other_user.id,
+            user_id=friend_id,
             notification_type="post",
             related_id=post.id,
             triggered_by_id=user_id,
