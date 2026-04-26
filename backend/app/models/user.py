@@ -16,6 +16,8 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
 
     phone_number = Column(String, unique=True, nullable=True)
+    
+    profile_picture = Column(String, nullable=True)  # URL to profile picture
 
     password = Column(String, nullable=False)
 

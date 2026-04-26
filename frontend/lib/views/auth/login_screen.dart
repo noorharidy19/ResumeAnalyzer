@@ -61,9 +61,11 @@ class _LoginScreenState extends State<LoginScreen> {
           final user = data['user'] as Map<String, dynamic>?;
           final email = user != null ? user['email'] as String? : null;
           final name = user != null ? user['name'] as String? : null;
-          print("👤 Extracted Name: $name, Email: $email"); // DEBUG
+          final profilePicture = user != null ? user['profile_picture'] as String? : null;
+          print("👤 Extracted Name: $name, Email: $email, Profile: $profilePicture"); // DEBUG
           if (email != null) await prefs.setString('user_email', email);
           if (name != null) await prefs.setString('user_name', name);
+          if (profilePicture != null) await prefs.setString('profile_picture', profilePicture);
         } catch (e) {
           print("❌ Error saving prefs: $e"); // DEBUG
         }

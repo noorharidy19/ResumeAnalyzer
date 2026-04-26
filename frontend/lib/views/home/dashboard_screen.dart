@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import '../auth/login_screen.dart';
 import '../resume/upload_resume_screen.dart';
 import '../candidates/candidates_screen.dart';
@@ -7,8 +8,10 @@ import '../community/community_screen.dart';
 import '../messages/messages_screen.dart';
 import '../feed/feed_screen.dart';
 import '../notifications/notifications_screen.dart';
+import '../profile/profile_picture_viewer.dart';
 import '../../services/message_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/user_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -20,6 +23,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String? userEmail;
   String? userName;
+  String? profilePictureUrl;
   bool isLoggedIn = false;
   int totalUnreadMessages = 0;
   int totalUnreadNotifications = 0;
@@ -63,6 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       userEmail = prefs.getString("user_email");
       userName = prefs.getString("user_name");
+      profilePictureUrl = prefs.getString("profile_picture");
       isLoggedIn = userEmail != null;
     });
     
@@ -96,7 +101,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
       isLoggedIn = false;
       userEmail = null;
       userName = null;
+      profilePictureUrl = null;
     });
+  }
+
+  Future<void> _uploadProfilePicture() async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      );
+
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Uploading profile picture...')),
+        );
+
+        final result = await UserService.uploadProfilePicture(bytes, image.name);
+
+        if (!result.containsKey('error')) {
+          final profilePicture = result['profile_picture'] as String?;
+          
+          // Save to SharedPreferences
+          final prefs = await SharedPreferences.getInstance();
+          if (profilePicture != null) {
+            await prefs.setString('profile_picture', profilePicture);
+          }
+          
+          setState(() {
+            profilePictureUrl = profilePicture;
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Profile picture updated! ✓'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error: ${result['error']}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -218,6 +286,97 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                       Row(
                         children: [
+                          // User Profile Section
+                          if (isLoggedIn)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 20),
+                              child: Row(
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        userName ?? userEmail ?? 'User',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      Text(
+                                        userEmail ?? '',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[500],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Stack(
+                                    children: [
+                                      GestureDetector(
+                                        onTap: profilePictureUrl != null
+                                            ? () {
+                                                showDialog(
+                                                  context: context,
+                                                  builder: (context) => ProfilePictureViewer(
+                                                    profilePictureUrl: profilePictureUrl!,
+                                                    userName: userName ?? userEmail ?? 'User',
+                                                    userEmail: userEmail ?? '',
+                                                    onPictureUpdated: () {
+                                                      setState(() {
+                                                        // Reload the picture
+                                                      });
+                                                    },
+                                                  ),
+                                                );
+                                              }
+                                            : null,
+                                        child: CircleAvatar(
+                                          radius: 24,
+                                          backgroundColor: primary.withOpacity(0.2),
+                                          backgroundImage: profilePictureUrl != null
+                                              ? NetworkImage(
+                                                  'http://localhost:8001/${profilePictureUrl!}'
+                                                )
+                                              : null,
+                                          child: profilePictureUrl == null
+                                              ? Text(
+                                                  (userName ?? userEmail ?? 'U')[0].toUpperCase(),
+                                                  style: TextStyle(
+                                                    color: primary,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 18,
+                                                  ),
+                                                )
+                                              : null,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        bottom: 0,
+                                        right: 0,
+                                        child: GestureDetector(
+                                          onTap: _uploadProfilePicture,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: primary,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            padding: const EdgeInsets.all(4),
+                                            child: const Icon(
+                                              Icons.camera_alt,
+                                              color: Colors.white,
+                                              size: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                           _topButton("Demo Mode"),
                           const SizedBox(width: 10),
                           _topButton("Connect"),

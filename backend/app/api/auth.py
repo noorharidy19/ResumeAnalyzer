@@ -43,6 +43,7 @@ def login(data: LoginSchema, db: Session = Depends(get_db)):
         "user": {
             "id": str(user.id),
             "email": user.email,
-            "name": user.name
+            "name": user.name,
+            "profile_picture": user.profile_picture
         }
     }
