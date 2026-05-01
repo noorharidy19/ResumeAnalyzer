@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import '../auth/login_screen.dart';
-import '../resume/upload_resume_screen.dart';
+import '../resume/resume_upload_screen.dart';
 import '../candidates/candidates_screen.dart';
 import '../community/community_screen.dart';
 import '../messages/messages_screen.dart';
@@ -466,7 +466,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             requireAuth(() {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const UploadResumeScreen()),
+                MaterialPageRoute(builder: (_) => const ResumeUploadScreen()),
               );
             });
           } else if (title == "Candidates") {

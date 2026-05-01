@@ -1,0 +1,365 @@
+{
+  "analysis_id": "analysis_20260429_220755",
+  "filename": "Noor_Hatem_Hassan_Anwer_Abdelwahab_FlowCV_Resume_2026-04-08.pdf",
+  "phase1": {
+    "name": "Senior Computer Science Student",
+    "email": "noorhatemhassananwer@gmail.com",
+    "phone": "01128772260",
+    "location": "Maadi,Cairo",
+    "github": null,
+    "skills": [
+      "python",
+      "java",
+      "php",
+      "javascript",
+      "sql",
+      "html",
+      "css",
+      "flutter",
+      "react",
+      "nodejs",
+      "fastapi",
+      "deep learning",
+      "nlp",
+      "generative ai",
+      "machine learning"
+    ],
+    "experience_years": 0.0,
+    "internship_count": 1,
+    "education": [
+      {
+        "institution": "Misr International University 2022 – present",
+        "degree": "Minor:Artificial Intelligence",
+        "gpa": 3.72,
+        "year": "2022"
+      }
+    ],
+    "projects": [
+      "EcoVision 09/2025 – Present",
+      "Graduation Project",
+      "Train Ticketing System",
+      "Language: C++",
+      "Advising System for collage",
+      "Language: C++/ Win forms GUI",
+      "Library Management System",
+      "Language: Java (using javafx gui)",
+      "Emergency Room Tirage System",
+      "Language: C++/ Qt GUI",
+      "to their priority(severity of the condition)",
+      "Healthcare chat-bot system",
+      "Language: HTML/ CSS/ JAVASCRIPT/ PHP",
+      "Image-Based food calorie estimation",
+      "Language: python",
+      "Parking occupancy detection",
+      "Language: Python",
+      "Emotion detection in text NLP",
+      "Pet-Adoption",
+      "(A Software Project Management Project)",
+      "2 / 2"
+    ]
+  },
+  "phase2": {
+    "career_level": "Junior (Strong)",
+    "embedding_backend": "sentence-transformers",
+    "query_used": "AI Machine Learning Engineer",
+    "jobs_source": "external_serpapi_or_fallback",
+    "matches": [
+      {
+        "rank": 1,
+        "title": "NLP Engineer",
+        "company": "N/A",
+        "apply_link": "",
+        "location": "Egypt",
+        "career_path": "Artificial Intelligence",
+        "level": "Junior–Mid",
+        "source": "local",
+        "match_score": 58,
+        "tfidf_score": 12.0,
+        "semantic_score": 47.5,
+        "skill_gap": {
+          "matched_required": [
+            "deep learning",
+            "machine learning",
+            "nlp",
+            "python"
+          ],
+          "missing_required": [
+            "git"
+          ],
+          "matched_preferred": [
+            "generative ai",
+            "prompt engineering",
+            "sql"
+          ],
+          "missing_preferred": [
+            "docker",
+            "pytorch",
+            "spacy",
+            "tensorflow"
+          ],
+          "coverage_pct": 80
+        },
+        "why_good_fit": "Strong fit — covers 80% of required skills. Has: deep learning, machine learning, nlp…. Still needs: git."
+      },
+      {
+        "rank": 2,
+        "title": "AI / ML Engineer",
+        "company": "N/A",
+        "apply_link": "",
+        "location": "Egypt",
+        "career_path": "Artificial Intelligence",
+        "level": "Junior–Mid",
+        "source": "local",
+        "match_score": 55,
+        "tfidf_score": 25.1,
+        "semantic_score": 50.2,
+        "skill_gap": {
+          "matched_required": [
+            "deep learning",
+            "machine learning",
+            "numpy",
+            "pandas",
+            "python"
+          ],
+          "missing_required": [
+            "git",
+            "pytorch",
+            "tensorflow"
+          ],
+          "matched_preferred": [
+            "fastapi",
+            "generative ai",
+            "nlp",
+            "prompt engineering"
+          ],
+          "missing_preferred": [
+            "aws",
+            "docker",
+            "multi-agent"
+          ],
+          "coverage_pct": 62
+        },
+        "why_good_fit": "Good fit — covers 62% of required skills. Has: deep learning, machine learning, numpy…. Still needs: git, pytorch, tensorflow."
+      },
+      {
+        "rank": 3,
+        "title": "Full Stack Web Developer",
+        "company": "N/A",
+        "apply_link": "",
+        "location": "Egypt",
+        "career_path": "Web Development",
+        "level": "Junior",
+        "source": "local",
+        "match_score": 54,
+        "tfidf_score": 17.9,
+        "semantic_score": 38.5,
+        "skill_gap": {
+          "matched_required": [
+            "css",
+            "html",
+            "javascript",
+            "sql"
+          ],
+          "missing_required": [
+            "git"
+          ],
+          "matched_preferred": [
+            "nodejs",
+            "php",
+            "react"
+          ],
+          "missing_preferred": [
+            "docker",
+            "mongodb",
+            "postgresql",
+            "rest api",
+            "vue"
+          ],
+          "coverage_pct": 80
+        },
+        "why_good_fit": "Strong fit — covers 80% of required skills. Has: css, html, javascript…. Still needs: git."
+      }
+    ],
+    "recommendations": [
+      {
+        "skill": "git",
+        "priority": "High",
+        "needed_in_jobs": 3,
+        "resource": "Git & GitHub Crash Course — freeCodeCamp (YouTube, free)",
+        "url": "https://www.youtube.com/watch?v=RGOj5yH7evk",
+        "est_hours": 6
+      },
+      {
+        "skill": "docker",
+        "priority": "Medium",
+        "needed_in_jobs": 2,
+        "resource": "Docker 101 — Play with Docker (free labs)",
+        "url": "https://labs.play-with-docker.com/",
+        "est_hours": 10
+      },
+      {
+        "skill": "pytorch",
+        "priority": "Medium",
+        "needed_in_jobs": 2,
+        "resource": "fast.ai Practical Deep Learning (free)",
+        "url": "https://course.fast.ai/",
+        "est_hours": 40
+      },
+      {
+        "skill": "tensorflow",
+        "priority": "Medium",
+        "needed_in_jobs": 2,
+        "resource": "TensorFlow Developer Certificate — Coursera",
+        "url": "https://www.coursera.org/professional-certificates/tensorflow-in-practice",
+        "est_hours": 60
+      },
+      {
+        "skill": "spacy",
+        "priority": "Low",
+        "needed_in_jobs": 1,
+        "resource": "spaCy Course (free at spacy.io/usage)",
+        "url": "https://spacy.io/usage",
+        "est_hours": 10
+      },
+      {
+        "skill": "aws",
+        "priority": "Low",
+        "needed_in_jobs": 1,
+        "resource": "AWS Cloud Practitioner — AWS Skill Builder (free)",
+        "url": "https://explore.skillbuilder.aws/learn/course/134",
+        "est_hours": 30
+      },
+      {
+        "skill": "multi-agent",
+        "priority": "Low",
+        "needed_in_jobs": 1,
+        "resource": "DeepLearning.AI Multi-Agent Systems course (free)",
+        "url": "https://www.deeplearning.ai/short-courses/multi-ai-agent-systems-with-crewai/",
+        "est_hours": 6
+      },
+      {
+        "skill": "mongodb",
+        "priority": "Low",
+        "needed_in_jobs": 1,
+        "resource": "MongoDB University — M001 Basics (free)",
+        "url": "https://learn.mongodb.com/learning-paths/introduction-to-mongodb",
+        "est_hours": 8
+      },
+      {
+        "skill": "postgresql",
+        "priority": "Low",
+        "needed_in_jobs": 1,
+        "resource": "PostgreSQL Tutorial",
+        "url": "https://www.postgresqltutorial.com/",
+        "est_hours": 12
+      },
+      {
+        "skill": "rest api",
+        "priority": "Low",
+        "needed_in_jobs": 1,
+        "resource": "REST API Design — Postman Learning Center",
+        "url": "https://learning.postman.com/docs/designing-and-developing-your-api/the-api-workflow/",
+        "est_hours": 6
+      },
+      {
+        "skill": "vue",
+        "priority": "Low",
+        "needed_in_jobs": 1,
+        "resource": "Vue.js Official Tutorial",
+        "url": "https://vuejs.org/tutorial/",
+        "est_hours": 12
+      }
+    ],
+    "summary": "Senior Computer Science Student is a Junior (Strong) with 18 detected skills. Best fit: NLP Engineer (58% match). Top skill gap: git.",
+    "profile_text": "Skills: python java php javascript sql html css flutter react nodejs fastapi deep learning nlp generative ai machine learning. python java php javascript sql html css flutter react nodejs fastapi deep learning nlp generative ai machine learning. python java php javascript sql html css flutter react nodejs fastapi deep learning nlp generative ai machine learning. Project: EcoVision 09/2025 – Present. Project: Graduation Project. Project: Train Ticketing System. Project: Language: C++. Project: Advising System for collage. Project: Language: C++/ Win forms GUI. Project: Library Management System. Project: Language: Java (using javafx gui). Project: Emergency Room Tirage System. Project: Language: C++/ Qt GUI. Project: to their priority(severity of the condition). Project: Healthcare chat-bot system. Project: Language: HTML/ CSS/ JAVASCRIPT/ PHP. Project: Image-Based food calorie estimation. Project: Language: python. Project: Parking occupancy detection. Project: Language: Python. Project: Emotion detection in text NLP. Project: Pet-Adoption. Project: (A Software Project Management Project). Project: 2 / 2. Education: Minor:Artificial Intelligence. Professional experience: 1 internships, 0.0 years."
+  },
+  "phase3": {
+    "resume_feedback": {
+      "overall_score": 80,
+      "strengths": [
+        "Strong background in programming languages such as Python, Java, and JavaScript",
+        "Experience with deep learning, machine learning, and NLP",
+        "Familiarity with web development frameworks like React and Node.js"
+      ],
+      "weaknesses": [
+        "Lack of experience with version control systems like Git",
+        "Limited exposure to cloud platforms and containerization tools"
+      ],
+      "improvements": [
+        "Acquire skills in Git and other version control systems",
+        "Explore cloud platforms like AWS and containerization tools like Docker"
+      ],
+      "summary": "The candidate has a strong foundation in programming languages and experience with AI and web development, but needs to improve in areas like version control and cloud computing."
+    },
+    "career_path": {
+      "recommended_path": "NLP Engineer",
+      "reason": "The candidate's matched required skills, including deep learning, machine learning, NLP, and Python, align well with the requirements of an NLP Engineer role.",
+      "alternative_paths": [
+        "AI/ML Engineer",
+        "Full Stack Web Developer"
+      ]
+    },
+    "interview_questions": [
+      {
+        "question": "How would you approach a text classification task using NLP techniques?",
+        "category": "Technical",
+        "difficulty": "Medium"
+      },
+      {
+        "question": "Can you explain the difference between supervised and unsupervised learning in the context of NLP?",
+        "category": "Technical",
+        "difficulty": "Easy"
+      },
+      {
+        "question": "How do you handle out-of-vocabulary words in an NLP model?",
+        "category": "Technical",
+        "difficulty": "Hard"
+      }
+    ],
+    "learning_roadmap": [
+      {
+        "skill": "git",
+        "priority": "High",
+        "reason": "Git is a fundamental tool for version control and collaboration in software development, and is required for most NLP Engineer roles.",
+        "estimated_time": "~6 hours",
+        "resource_title": "Git & GitHub Crash Course — freeCodeCamp (YouTube, free)",
+        "resource_url": "https://www.youtube.com/watch?v=RGOj5yH7evk",
+        "resource_platform": "YouTube"
+      },
+      {
+        "skill": "docker",
+        "priority": "Medium",
+        "reason": "Docker is a popular containerization tool that can help with deployment and scaling of NLP models.",
+        "estimated_time": "~10 hours",
+        "resource_title": "Docker 101 — Play with Docker (free labs)",
+        "resource_url": "https://labs.play-with-docker.com/",
+        "resource_platform": "Play with Docker"
+      },
+      {
+        "skill": "pytorch",
+        "priority": "Medium",
+        "reason": "PyTorch is a popular deep learning framework that can be used for building and deploying NLP models.",
+        "estimated_time": "~40 hours",
+        "resource_title": "fast.ai Practical Deep Learning (free)",
+        "resource_url": "https://course.fast.ai/",
+        "resource_platform": "fast.ai"
+      },
+      {
+        "skill": "tensorflow",
+        "priority": "Medium",
+        "reason": "TensorFlow is another popular deep learning framework that can be used for building and deploying NLP models.",
+        "estimated_time": "~60 hours",
+        "resource_title": "TensorFlow Developer Certificate — Coursera",
+        "resource_url": "https://www.coursera.org/professional-certificates/tensorflow-in-practice",
+        "resource_platform": "Coursera"
+      }
+    ],
+    "final_recommendation": "The candidate should focus on acquiring skills in Git, Docker, PyTorch, and TensorFlow to improve their chances of getting hired as an NLP Engineer. Additionally, they should practice answering technical interview questions related to NLP and deep learning.",
+    "validation_report": {
+      "status": "clean",
+      "hallucinated_skills_removed": [],
+      "known_skill_pool_size": 29,
+      "roadmap_items_after_validation": 4
+    }
+  }
+}
