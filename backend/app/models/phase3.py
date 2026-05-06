@@ -35,36 +35,67 @@ client = Groq(api_key=api_key)
 # VALIDATION — anti-hallucination
 # ─────────────────────────────────────────────────────────────────────────────
 def validate_llm_output(phase3_result: dict, phase1_result: dict, phase2_result: dict) -> dict:
-    known_skills = set(s.lower() for s in phase1_result.get("skills", []))
- 
+    known_skills = set(s.lower().strip() for s in phase1_result.get("skills", []))
+
     for match in phase2_result.get("matches", []):
         gap = match.get("skill_gap", {})
-        for s in gap.get("matched_required", []):  known_skills.add(s.lower())
-        for s in gap.get("missing_required", []):   known_skills.add(s.lower())
-        for s in gap.get("matched_preferred", []): known_skills.add(s.lower())
-        for s in gap.get("missing_preferred", []): known_skills.add(s.lower())
- 
+        for key in ["matched_required", "missing_required", "matched_preferred", "missing_preferred"]:
+            for s in gap.get(key, []):
+                known_skills.add(s.lower().strip())
+
     for rec in phase2_result.get("recommendations", []):
-        known_skills.add(rec.get("skill", "").lower())
- 
-    hallucinated      = []
+        known_skills.add(rec.get("skill", "").lower().strip())
+
+    hallucinated = []
     validated_roadmap = []
- 
+    seen_skills = set()
+
     for item in phase3_result.get("learning_roadmap", []):
-        skill = item.get("skill", "").lower()
+        skill = item.get("skill", "").lower().strip()
+
         if skill and skill not in known_skills:
             hallucinated.append(skill)
-        else:
+            continue
+
+        if skill and skill not in seen_skills:
+            seen_skills.add(skill)
             validated_roadmap.append(item)
- 
+
+    long_term = phase3_result.get("career_path", {}) \
+                         .get("timeline", {}) \
+                         .get("long_term_6_12_months", "")
+    
+    career_level = phase2_result.get("career_level", "")
+    
+    if career_level in ("Junior", "Junior (Strong)", "Entry-level / Student"):
+        if any(w in long_term.lower() for w in ["senior", "lead", "principal"]):
+            phase3_result["career_path"]["timeline"]["long_term_6_12_months"] = (
+                "Apply for junior roles, contribute to open-source projects, "
+                "or pursue internships to build practical experience."
+            )
+
     phase3_result["learning_roadmap"] = validated_roadmap
+
+    # copy confidence from Phase 2
+    phase3_result["confidence_score"] = phase2_result.get("confidence_score", 0)
+
+    # force readiness from top Phase 2 match exactly
+    top_match = phase2_result.get("matches", [{}])[0]
+    readiness = top_match.get("readiness", {})
+    phase3_result["readiness_decision"] = {
+        "status": readiness.get("status", "Unknown"),
+        "reason": readiness.get("reason", "")
+    }
+
     phase3_result["validation_report"] = {
-        "status":                         "clean" if not hallucinated else "issues_found",
-        "hallucinated_skills_removed":    hallucinated,
-        "known_skill_pool_size":          len(known_skills),
+        "status": "clean" if not hallucinated else "issues_found",
+        "hallucinated_skills_removed": hallucinated,
+        "known_skill_pool_size": len(known_skills),
         "roadmap_items_after_validation": len(validated_roadmap),
     }
+
     return phase3_result
+
 
 
 # ─────────────────────────────
@@ -81,8 +112,11 @@ Phase 2 recommendations already contain: skill, priority, resource, url, est_hou
 Rules:
 - Use ONLY skills, matched skills, and missing skills present in Phase 2.
 - Do not invent new skill gaps.
+- overall_score must be calculated from score_breakdown: add the positive values and subtract the gaps. 
+- Do NOT default to 80. A candidate with no experience and many gaps should score 50-65. 
+- A strong candidate with internships and high coverage should score 75-90.
 - Career path reason must use matched_required/matched_preferred skills only.
-- Learning roadmap must use ONLY Phase 2 missing skills.
+- Learning roadmap MUST include ALL skills listed in Phase 2 recommendations, not just those missing from the top job. Include every skill from the recommendations list.
 - Each roadmap item must copy resource, url, est_hours from Phase 2 recommendations exactly.
 - Interview questions must be role-specific for the TOP matched job title only.
 - Return ONLY valid JSON. No markdown. No text outside the JSON.
@@ -104,22 +138,52 @@ Candidate Resume Data (Phase 1):
 Job Matching Results + Learning Recommendations (Phase 2):
 {json.dumps(phase2_result, indent=2, ensure_ascii=False)}
  
+Readiness per job match:
+{chr(10).join(f"- {m['title']}: {m['readiness']['status']} — {m['readiness']['reason']}" for m in phase2_result.get('matches', []))}
+ 
 Top Matched Job: "{top_job_title}"
 Required Skills for Interview Questions: {json.dumps(top_required)}
- 
+Candidate's Own Projects (use at least 2 in interview questions): {json.dumps(phase1_result.get('projects', [])[:3])}
+At least one interview question must reference one candidate project by name from Phase 1.
+
+Never suggest senior roles in 6 to 12 months for Junior/Entry-level candidates.
+Long term must be: apply for junior roles, internships, or build portfolio projects.
+STRICT RULE: The "recommended_path" field must be a broad career direction that describes a job category or role type (e.g. a general title like "Software Engineer" or "Backend Developer" or "Data Scientist"). It must NOT copy the exact job listing title. The value "{top_job_title}" is a specific job listing and is forbidden in this field — write a generalized version of it instead.
+STRICT RULE: The learning_roadmap MUST contain exactly {len(phase2_result.get('recommendations', []))} items — one for each skill in the Phase 2 recommendations list above. Do not skip any skill.
+- Copy confidence_score exactly from Phase 2.
+- Copy readiness_decision.status and reason exactly from Phase 2 top match readiness.
+- Do NOT recommend senior roles for Junior or Entry-level candidates.
+- Final recommendation must separate top-job gaps from other-job gaps.
+- For the top matched job, prioritize only missing_required from the top match first.
+
 Generate a professional AI analysis in this exact JSON format:
  
 {{
   "resume_feedback": {{
     "overall_score": <integer 0-100>,
+    "score_breakdown": {{
+        "skills_match":   "<e.g. +35 — strong Python/ML coverage>",
+        "experience":     "<e.g. +20 — 2 internships>",
+        "projects":       "<e.g. +15 — relevant NLP project>",
+        "gaps":           "<e.g. -15 — missing TensorFlow, Docker>"
+    }},
     "strengths":    [<string>, ...],
     "weaknesses":   [<string>, ...],
     "improvements": [<string>, ...],
     "summary":      "<string>"
   }},
+    "readiness_decision": {{
+    "status": "<Ready ✅ / Almost Ready ⚠️ / Not Ready ❌ — for the top matched job>",
+    "reason": "<one sentence explaining why>"
+  }},
   "career_path": {{
     "recommended_path":  "<string>",
     "reason":            "<string — use only matched skills from Phase 2>",
+    "timeline": {{
+        "short_term_0_3_months":  "<1-2 concrete actions>",
+        "mid_term_3_6_months":    "<1-2 concrete actions>",
+        "long_term_6_12_months":  "<realistic milestone based on candidate level; do not suggest senior role for Junior/Entry-level>"
+    }},
     "alternative_paths": [<string>, ...]
   }},
   "interview_questions": [
@@ -140,6 +204,7 @@ Generate a professional AI analysis in this exact JSON format:
       "resource_platform": "<platform name inferred from the url>"
     }}
   ],
+  "confidence_score": <copy integer from Phase 2 confidence_score>,
   "final_recommendation": "<string>"
 }}
 """

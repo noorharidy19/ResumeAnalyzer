@@ -104,6 +104,40 @@ def extract_name(text: str):
             return line
     return None
 
+def generate_cv_warnings(features: dict) -> list[str]:
+    warnings = []
+
+    if not features.get("email"):
+        warnings.append("Missing email")
+
+    if not features.get("phone"):
+        warnings.append("Missing phone number")
+
+    if not features.get("github"):
+        warnings.append("Missing GitHub profile")
+
+    if not features.get("location"):
+        warnings.append("Missing location")
+
+    if not features.get("linkedin"):
+        warnings.append("Missing LinkedIn profile")
+
+    if not features.get("name"):
+        warnings.append("Missing name")
+
+    if not features.get("skills"):
+        warnings.append("No skills detected")
+
+    if len(features.get("projects", [])) == 0:
+        warnings.append("No projects found")
+
+    if features.get("experience_years", 0) == 0 and features.get("internship_count", 0) == 0:
+        warnings.append("No experience or internships detected")
+
+    if not features.get("education"):
+        warnings.append("No education section found")
+
+    return warnings
 
 # ── SKILL LIST ────────────────────────────────────────────────────────────────
 # FIX 1: Added missing skills that appear in Nourhan's CV:
@@ -186,10 +220,11 @@ def extract_experience_years(text: str) -> float:
 
 
 def extract_internship_count(text: str) -> int:
-    count = 0
     seen_lines = set()
+    count = 0
 
-    # Pattern 1: role line with MM/YYYY date (structured CVs like Nourhan)
+    # Pattern 1: MM/YYYY date range lines — each = one position
+    # This is the most reliable signal
     pattern_dated = re.compile(
         r"^\S.{2,}\s+\d{1,2}/\d{4}\s*[\-\u2013\u2014]+", re.MULTILINE
     )
@@ -199,19 +234,43 @@ def extract_internship_count(text: str) -> int:
             seen_lines.add(line)
             count += 1
 
-    # Pattern 2: text-based internship mention (unstructured CVs like Malak)
-    pattern_text = re.compile(
-        r"(completed|finished|did|undertook|joined|worked).{0,30}"
-        r"(internship|training\s+program|summer\s+program)",
-        re.IGNORECASE
-    )
-    for m in pattern_text.finditer(text):
-        line = m.group().strip()
-        if line not in seen_lines:
-            seen_lines.add(line)
-            count += 1
+    # Pattern 2: only for unstructured CVs — text-based mention
+    # ONLY runs if Pattern 1 found nothing (avoids double counting)
+    if count == 0:
+        pattern_text = re.compile(
+            r"(completed|finished|did|undertook|joined|worked).{0,30}"
+            r"(internship|training\s+program|summer\s+program)",
+            re.IGNORECASE
+        )
+        for m in pattern_text.finditer(text):
+            line = m.group().strip()
+            if line not in seen_lines:
+                seen_lines.add(line)
+                count += 1
+
+    # Pattern 3: ONLY runs if both above found nothing
+    # catches edge cases like "AI track" headers with no dates
+    if count == 0:
+        pattern_keyword = re.compile(
+            r"\b(internship|training\s+program|summer\s+program|ai\s+track|data\s+track)\b",
+            re.IGNORECASE
+        )
+        for m in pattern_keyword.finditer(text):
+            start = text.rfind("\n", 0, m.start()) + 1
+            end = text.find("\n", m.end())
+            if end == -1:
+                end = len(text)
+            line = text[start:end].strip()
+            if len(line) > 80:
+                continue
+            if line.startswith(("•", "-", "*", "·")):
+                continue
+            if line not in seen_lines:
+                seen_lines.add(line)
+                count += 1
 
     return count
+
 
 def extract_currently_studying(text: str) -> list[str]:
     in_progress = []
@@ -326,18 +385,34 @@ def extract_projects(projects_text: str) -> list:
 def extract_location(text: str, doc) -> str:
     LOCATION_BLACKLIST = [
         "software engineering", "artificial intelligence", "computer science",
-        "advanced", "data science", "machine learning"
+        "advanced", "data science", "machine learning",
+        "linkedin", "github", "http", "www",  # ADDED
     ]
-    
+    # 1️⃣ Try structured location (City, Country)
     m = re.search(r"([A-Z][a-z]+(?: [A-Z][a-z]+)?,\s*(?:New\s)?[A-Z][a-z]+)", text)
     if m:
         candidate = m.group(1).strip()
         if not any(bad in candidate.lower() for bad in LOCATION_BLACKLIST):
             return candidate
 
+    # 2️⃣ spaCy entities (with filtering)
     for ent in doc.ents:
         if ent.label_ == "GPE":
+            candidate = ent.text.strip().lower()
+
+            if candidate in LOCATION_BLACKLIST:
+                continue
+
+            # reject short fake locations like "AI"
+            if len(candidate) <= 3:
+                continue
+
+            # reject if it's clearly not a place
+            if any(bad in candidate for bad in LOCATION_BLACKLIST):
+                continue
+
             return ent.text
+
     return None
 
 
@@ -354,6 +429,8 @@ def extract_github(text: str) -> str | None:
 
     return None
 
+def has_linkedin(text: str) -> bool:
+    return "linkedin" in text.lower() or "linkedin.com" in text.lower()
 
 # ─────────────────────────────────────────────────────────
 # MAIN extract_features
@@ -379,10 +456,17 @@ def extract_features(text: str, doc) -> dict:
         ["SKILLS", "CERTIFICATES", "CERTIFICATIONS", "EXTRACURRICULAR ACTIVITIES"]
     )
 
-    skills_found = [
-        s for s in KNOWN_SKILLS
-        if re.search(r"\b" + re.escape(s) + r"\b", text_lower)
-    ]
+    skills_found = []
+    for s in KNOWN_SKILLS:
+        pattern = re.escape(s)
+        # for skills with special chars like c++, c#, node.js use exact match without \b
+        if any(c in s for c in ['+', '#', '.']):
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                skills_found.append(s)
+        else:
+            if re.search(r"\b" + pattern + r"\b", text_lower):
+                skills_found.append(s)
+
 
     # Add currently-studying skills
     in_progress_skills = extract_currently_studying(text)
@@ -396,27 +480,27 @@ def extract_features(text: str, doc) -> dict:
             skills_found.append(skill)
 
     github_url = extract_github(text)
+    linkedin_found = has_linkedin(text)
     if (github_url or "github" in text_lower) and "github" not in skills_found:
         skills_found.append("github")
 
-    return {
-        "name":             extract_name(text),
-        "email":            extract_email(text),
-        "phone":            extract_phone(text),
-        "location":         extract_location(text, doc),
-        "github":           github_url,
-        "skills":           skills_found,
-
-        # important: use experience section only
+    features = {
+        "name": extract_name(text),
+        "email": extract_email(text),
+        "phone": extract_phone(text),
+        "location": extract_location(text, doc),
+        "github": github_url,
+        "linkedin": linkedin_found,
+        "skills": skills_found,
         "experience_years": extract_experience_years(experience_text),
         "internship_count": extract_internship_count(experience_text) or extract_internship_count(text),
-
-        # important: use education section only
-        "education":        extract_education(education_text),
-
-        # important: use projects section only
-        "projects":         extract_projects(projects_text),
+        "education": extract_education(education_text),
+        "projects": extract_projects(projects_text),
     }
+
+    features["warnings"] = generate_cv_warnings(features)   # MODIFIED
+
+    return features
 
 
 # ─────────────────────────────

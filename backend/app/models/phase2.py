@@ -505,25 +505,47 @@ def compute_hybrid_match_score(
     level_lower = job_level.lower()
 
     if "junior" in level_lower:
-        if internship_count >= 3:
-            exp_score = 100
-        elif internship_count >= 1 or experience_years >= 1:
-            exp_score = 90
+        if internship_count >= 2:
+            exp_score = 100  
+        elif internship_count == 1:
+            exp_score = 90    
+        elif experience_years >= 1:
+            exp_score = 85    
         else:
-            exp_score = 75
+            exp_score = 70    
     elif "mid" in level_lower:
-        exp_score = 50 if experience_years < 1 else 70
+        exp_score = 60 if experience_years < 1 else 75   
     else:
-        exp_score = 20
+        exp_score = 30   
 
     final = (
         0.10 * tfidf +
-        0.50 * semantic +
-        0.30 * skill_score +
+        0.25 * semantic +   
+        0.55 * skill_score +
         0.10 * exp_score
     )
+    penalty = len(gap["missing_required"]) * 2   
+    final = final - penalty                     
 
-    return round(min(final, 100))
+    return round(max(0, min(final, 100)))   
+
+
+
+def compute_readiness(gap: dict, career_level: str, internship_count: int) -> dict:
+    coverage = gap["coverage_pct"]
+    missing_req = gap["missing_required"]
+
+    if coverage >= 80 and len(missing_req) == 0:
+        status = "Ready ✅"
+        reason = "Meets all required skills."
+    elif coverage >= 60:
+        status = "Almost Ready ⚠️"
+        reason = f"Missing {len(missing_req)} required skill(s): {', '.join(missing_req[:3])}."
+    else:
+        status = "Not Ready ❌"
+        reason = f"Missing core skills: {', '.join(missing_req[:3])}{'...' if len(missing_req) > 3 else ''}."
+
+    return {"status": status, "reason": reason, "coverage_pct": coverage}
 
 
 def build_recommendations(matches: list[dict], candidate_skills: list[str]) -> list[dict]:
@@ -563,20 +585,26 @@ def build_recommendations(matches: list[dict], candidate_skills: list[str]) -> l
 
 
 def detect_career_level(phase1: dict) -> str:
-    exp        = phase1.get("experience_years", 0)
-    projs      = len(phase1.get("projects", []))
-    # FIX 7: also consider internship_count
+    exp = phase1.get("experience_years", 0)
+    projs = len(phase1.get("projects", []))
     internships = phase1.get("internship_count", 0)
-    edu        = phase1.get("education", [{}])
-    gpa        = edu[0].get("gpa") if edu else None
+    edu = phase1.get("education", [{}])
+    gpa = edu[0].get("gpa") if edu else None
 
+    # strong junior first (priority condition)
+    if exp >= 1 or internships >= 2 or projs >= 5:
+        return "Junior (Strong)"   # MODIFIED
+
+    # junior condition
+    if exp > 0 or internships == 1 or projs >= 3 or (gpa and gpa >= 3.5):
+        return "Junior"   # MODIFIED
+
+    # mid-level only if real experience
     if exp >= 3:
-        return "Mid-level"
-    if exp >= 1 or projs >= 5 or internships >= 2:   # ← fixed
-        return "Junior (Strong)"
-    if projs >= 3 or (gpa and gpa >= 3.5):
-        return "Junior"
-    return "Entry-level / Student"
+        return "Mid-level" 
+
+    # fallback
+    return "Entry-level / Student"   
 
 def extract_required_skills_from_description(description: str) -> list[str]:
     text = description.lower()
@@ -692,7 +720,12 @@ def run_phase2(phase1_result: dict, top_k: int = 3,use_external_jobs: bool = Tru
             "semantic_score": round(semantic_score, 1),
             "skill_gap":      gap,
             "why_good_fit":   _explain_fit(gap, job, career_level),
-        })
+            "readiness": compute_readiness(
+                gap, 
+                career_level, 
+                phase1_result.get("internship_count", 0)
+            ),
+     })
 
     matches.sort(key=lambda x: x["match_score"], reverse=True)
     for i, m in enumerate(matches):
@@ -712,6 +745,19 @@ def run_phase2(phase1_result: dict, top_k: int = 3,use_external_jobs: bool = Tru
 
     print(f"[Phase 2] Done — top match: {top['title']} ({top['match_score']}%)")
 
+    # ADDED — compute confidence score before return
+    def _compute_confidence(phase1: dict, matches: list) -> int:
+        score = 0
+        if phase1.get("name"):      score += 15
+        if phase1.get("email"):     score += 10
+        if phase1.get("skills"):    score += 20
+        if phase1.get("projects"):  score += 15
+        if phase1.get("education"): score += 10
+        if matches:
+            top_match = matches[0]["match_score"]
+            score += int(top_match * 0.30)  # up to 30 points from match quality
+        return min(score, 100)
+    
     return {
         "career_level":      career_level,
         "embedding_backend": engine.backend,
@@ -720,6 +766,7 @@ def run_phase2(phase1_result: dict, top_k: int = 3,use_external_jobs: bool = Tru
         "matches": matches,
         "recommendations":   recommendations,
         "summary":           summary,
+        "confidence_score": _compute_confidence(phase1_result, matches),
         # FIX 10: include profile_text for Phase 3 RAG context
         "profile_text":      profile_text,
     }
@@ -778,6 +825,8 @@ if __name__ == "__main__":
         print(f"       Missing (req)  : {', '.join(g['missing_required']) or 'none ✓'}")
         print(f"       Missing (pref) : {', '.join(g['missing_preferred']) or 'none ✓'}")
         print(f"       Why fits       : {m['why_good_fit']}")
+        print(f"       Readiness      : {m['readiness']['status']} — {m['readiness']['reason']}")
+
 
     print("\n── LEARNING RECOMMENDATIONS ─────────────────────────────────")
     for r in result["recommendations"]:
