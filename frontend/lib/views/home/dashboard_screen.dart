@@ -7,8 +7,10 @@ import '../candidates/candidates_screen.dart';
 import '../community/community_screen.dart';
 import '../messages/messages_screen.dart';
 import '../feed/feed_screen.dart';
+import '../analytics/analytics_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../profile/profile_picture_viewer.dart';
+import '../profile/my_profile_screen.dart';
 import '../../services/message_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/user_service.dart';
@@ -28,15 +30,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int totalUnreadMessages = 0;
   int totalUnreadNotifications = 0;
 
-  final Color primary = const Color(0xFF7C8CF8); // pastel blue
+  final Color primary = const Color(0xFF7C8CF8);
   final Color bg = const Color(0xFFF5F7FF);
 
   @override
   void initState() {
     super.initState();
     loadUser();
-    _refreshUnreadCount();
-    _refreshUnreadNotifications();
   }
 
   Future<void> _refreshUnreadCount() async {
@@ -71,99 +71,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       isLoggedIn = userEmail != null;
     });
     
-    // Load unread count after login status is set
     if (isLoggedIn) {
       await Future.delayed(const Duration(milliseconds: 300));
       _refreshUnreadCount();
+      _refreshUnreadNotifications();
     }
   }
 
-  void requireAuth(VoidCallback action) {
-    if (!isLoggedIn) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login first")),
-      );
-
+  void requireAuth(VoidCallback callback) {
+    if (isLoggedIn) {
+      callback();
+    } else {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-    } else {
-      action();
-    }
-  }
-
-  void logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-
-    setState(() {
-      isLoggedIn = false;
-      userEmail = null;
-      userName = null;
-      profilePictureUrl = null;
-    });
-  }
-
-  Future<void> _uploadProfilePicture() async {
-    final ImagePicker picker = ImagePicker();
-    try {
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-      );
-
-      if (image != null) {
-        final bytes = await image.readAsBytes();
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Uploading profile picture...')),
-        );
-
-        final result = await UserService.uploadProfilePicture(bytes, image.name);
-
-        if (!result.containsKey('error')) {
-          final profilePicture = result['profile_picture'] as String?;
-          
-          // Save to SharedPreferences
-          final prefs = await SharedPreferences.getInstance();
-          if (profilePicture != null) {
-            await prefs.setString('profile_picture', profilePicture);
-          }
-          
-          setState(() {
-            profilePictureUrl = profilePicture;
-          });
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Profile picture updated! ✓'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error: ${result['error']}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ).then((_) => loadUser());
     }
   }
 
@@ -173,259 +95,246 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: bg,
       body: Row(
         children: [
-
-          // 🟣 SIDEBAR
+          // Left Sidebar
           Container(
-            width: 240,
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
+            width: 250,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(2, 0),
+                )
+              ],
+            ),
             child: Column(
               children: [
-
-                const SizedBox(height: 30),
-
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: primary.withOpacity(0.2),
-                      child: Icon(Icons.auto_graph, color: primary),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      "ATS Analyzer",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-                // show logged-in user's name in sidebar
-                if (isLoggedIn) ...[
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Hi, ${userName ?? userEmail ?? ''} 👋",
-                      style: TextStyle(fontSize: 14, color: primary, fontWeight: FontWeight.w600),
-                    ),
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: primary,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
                   ),
-                ],
-
-                const SizedBox(height: 18),
-
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(60),
+                          image: profilePictureUrl != null && profilePictureUrl!.isNotEmpty
+                              ? DecorationImage(
+                                  image: NetworkImage(
+                                    'http://localhost:8001/${profilePictureUrl!.replaceAll(r'\', '/')}',
+                                  ),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: profilePictureUrl == null || profilePictureUrl!.isEmpty
+                            ? GestureDetector(
+                                onTap: isLoggedIn
+                                    ? () async {
+                                        final picker = ImagePicker();
+                                        final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                                        if (pickedFile != null) {
+                                          // Handle image upload
+                                        }
+                                      }
+                                    : null,
+                                child: Icon(
+                                  Icons.person,
+                                  color: primary,
+                                  size: 30,
+                                ),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        userName ?? 'Guest User',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        userEmail ?? 'not logged in',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (!isLoggedIn)
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                              ).then((_) => loadUser());
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: primary,
+                            ),
+                            child: const Text('Login'),
+                          ),
+                        ),
+                      if (isLoggedIn)
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await SharedPreferences.getInstance().then((prefs) {
+                                prefs.remove('access_token');
+                                prefs.remove('user_email');
+                                prefs.remove('user_name');
+                                prefs.remove('profile_picture');
+                              });
+                              setState(() {
+                                isLoggedIn = false;
+                                userName = null;
+                                userEmail = null;
+                                profilePictureUrl = null;
+                              });
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Logout'),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                // Menu items
                 Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        _sideItem(Icons.dashboard, "Dashboard", true),
-                        _sideItem(Icons.description, "Resume Analyzer", false),
-                        _sideItem(Icons.people, "Candidates", false),
-                        _sideItem(Icons.work, "Jobs", false),
-                        _sideItem(Icons.message, "Messages", false, badgeCount: totalUnreadMessages),
-                        _sideItem(Icons.article, "Feed", false),
-                        _sideItem(Icons.notifications, "Notifications", false, badgeCount: totalUnreadNotifications),
-                        _sideItem(Icons.forum, "Community", false),
-                        _sideItem(Icons.bar_chart, "Analytics", false),
-                      ],
-                    ),
+                  child: ListView(
+                    padding: const EdgeInsets.all(12),
+                    children: [
+                      _sideItem(Icons.home, "Dashboard", true),
+                      _sideItem(Icons.person, "My Profile", false),
+                      _sideItem(Icons.description, "Resume Analyzer", false),
+                      _sideItem(Icons.people, "Candidates", false),
+                      _sideItem(Icons.forum, "Community", false),
+                      _sideItem(Icons.mail, "Messages", false, badgeCount: totalUnreadMessages),
+                      _sideItem(Icons.feed, "Feed", false),
+                      _sideItem(Icons.notifications, "Notifications", false, badgeCount: totalUnreadNotifications),
+                      _sideItem(Icons.analytics, "Analytics", false),
+                    ],
                   ),
-                ),
-
-                const SizedBox(height: 8),
-
-                ListTile(
-                  leading: const Icon(Icons.logout),
-                  title: Text(isLoggedIn ? "Logout" : "Login"),
-                  onTap: () {
-                    if (isLoggedIn) {
-                      logout();
-                    } else {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      );
-                    }
-                  },
                 ),
               ],
             ),
           ),
-
-          // 🟦 MAIN CONTENT
+          // Main Content
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(30),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
-                  // HEADER
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "ATS Resume Analyzer",
-                              style: TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                                color: primary,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              isLoggedIn ? "Welcome, ${userName ?? userEmail ?? ''}" : "Welcome, Guest",
-                              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      Row(
-                        children: [
-                          // User Profile Section
-                          if (isLoggedIn)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 20),
-                              child: Row(
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        userName ?? userEmail ?? 'User',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      Text(
-                                        userEmail ?? '',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[500],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Stack(
-                                    children: [
-                                      GestureDetector(
-                                        onTap: profilePictureUrl != null
-                                            ? () {
-                                                showDialog(
-                                                  context: context,
-                                                  builder: (context) => ProfilePictureViewer(
-                                                    profilePictureUrl: profilePictureUrl!,
-                                                    userName: userName ?? userEmail ?? 'User',
-                                                    userEmail: userEmail ?? '',
-                                                    onPictureUpdated: () {
-                                                      setState(() {
-                                                        // Reload the picture
-                                                      });
-                                                    },
-                                                  ),
-                                                );
-                                              }
-                                            : null,
-                                        child: CircleAvatar(
-                                          radius: 24,
-                                          backgroundColor: primary.withOpacity(0.2),
-                                          backgroundImage: profilePictureUrl != null
-                                              ? NetworkImage(
-                                                  'http://localhost:8001/${profilePictureUrl!}'
-                                                )
-                                              : null,
-                                          child: profilePictureUrl == null
-                                              ? Text(
-                                                  (userName ?? userEmail ?? 'U')[0].toUpperCase(),
-                                                  style: TextStyle(
-                                                    color: primary,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 18,
-                                                  ),
-                                                )
-                                              : null,
-                                        ),
-                                      ),
-                                      Positioned(
-                                        bottom: 0,
-                                        right: 0,
-                                        child: GestureDetector(
-                                          onTap: _uploadProfilePicture,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              color: primary,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            padding: const EdgeInsets.all(4),
-                                            child: const Icon(
-                                              Icons.camera_alt,
-                                              color: Colors.white,
-                                              size: 12,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          _topButton("Demo Mode"),
-                          const SizedBox(width: 10),
-                          _topButton("Connect"),
-                        ],
-                      )
-                    ],
+                  const Text(
+                    "Welcome to Resume Analyzer",
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-
-                  const SizedBox(height: 20),
-
+                  const SizedBox(height: 8),
                   Text(
-                    "AI-powered recruitment insights and candidate analysis.",
-                    style: TextStyle(color: Colors.grey[600]),
+                    "Your AI-powered recruitment platform.",
+                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
                   ),
-
-                  const SizedBox(height: 25),
-
-                  // STATS
-                  Row(
-                    children: [
-                      _statCard("2", "Total Resumes", Icons.description),
-                      _statCard("2", "Candidates", Icons.people),
-                      _statCard("90%", "Avg Match", Icons.star),
-                      _statCard("12 days", "Processing", Icons.timer),
-                    ],
-                  ),
-
-                  const SizedBox(height: 25),
-
-                  // CHART AREA (UI ONLY)
-                  Expanded(
-                    child: Row(
+                  const SizedBox(height: 30),
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        )
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _bigCard("Monthly Applications")),
-                        const SizedBox(width: 20),
-                        Expanded(child: _bigCard("Top Skills Detected")),
+                        const Text(
+                          "Getting Started",
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Use the menu on the left to navigate through different features:",
+                          style: TextStyle(color: Colors.grey[700]),
+                        ),
+                        const SizedBox(height: 16),
+                        _featureItem("📄", "Resume Analyzer", "Upload and analyze your resume with AI-powered insights"),
+                        _featureItem("👥", "Candidates", "Browse and connect with other professionals"),
+                        _featureItem("💬", "Community", "Join discussions and share your experience"),
+                        _featureItem("✉️", "Messages", "Communicate with connections"),
+                        _featureItem("📰", "Feed", "View posts from your network"),
+                        _featureItem("📊", "Analytics", "View detailed analytics and history"),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );
   }
 
-  // ---------------- UI WIDGETS ----------------
+  Widget _featureItem(String emoji, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 24)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _sideItem(IconData icon, String title, bool active, {int badgeCount = 0}) {
     return Container(
@@ -462,7 +371,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         title: Text(title),
         onTap: () {
-          if (title == "Resume Analyzer") {
+          if (title == "My Profile") {
+            requireAuth(() {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MyProfileScreen()),
+              );
+            });
+          } else if (title == "Resume Analyzer") {
             requireAuth(() {
               Navigator.push(
                 context,
@@ -508,68 +424,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _refreshUnreadNotifications();
               });
             });
-          } else {
-            // other navigation placeholders
+          } else if (title == "Analytics") {
+            requireAuth(() {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AnalyticsScreen()),
+              );
+            });
           }
         },
       ),
-    );
-  }
-
-  Widget _statCard(String value, String title, IconData icon) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(color: Colors.black12.withOpacity(0.05), blurRadius: 10),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: primary),
-            const SizedBox(height: 10),
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.bold)),
-            Text(title, style: TextStyle(color: Colors.grey[600])),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _bigCard(String title) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-          const Spacer(),
-          const Center(child: Text("Chart Placeholder")),
-        ],
-      ),
-    );
-  }
-
-  Widget _topButton(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: primary.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(text, style: TextStyle(color: primary)),
     );
   }
 }
