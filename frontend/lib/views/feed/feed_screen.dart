@@ -18,6 +18,7 @@ class _FeedScreenState extends State<FeedScreen> {
   int offset = 0;
   final int limit = 20;
   final TextEditingController postController = TextEditingController();
+  int selectedTab = 0; // 0 = Feed, 1 = My Posts
 
   @override
   void initState() {
@@ -36,25 +37,28 @@ class _FeedScreenState extends State<FeedScreen> {
       isLoading = true;
     });
 
-    final result = await PostService.getFeed(limit: limit, offset: offset);
+    final result = selectedTab == 0
+        ? await PostService.getFeed(limit: limit, offset: offset)
+        : await PostService.getMyPosts(limit: limit, offset: offset);
     
-    if (!result.containsKey('error')) {
-      setState(() {
-        posts = result['posts'] ?? [];
-        totalCount = result['total_count'] ?? 0;
-        isLoading = false;
-      });
-    } else {
+    if (mounted) {
       setState(() {
         isLoading = false;
       });
-      if (mounted) {
+      
+      if (result.containsKey('error')) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${result['error']}'),
+            content: Text('Error loading ${selectedTab == 0 ? "feed" : "posts"}: ${result['error']}'),
             backgroundColor: Colors.red,
           ),
         );
+      } else {
+        setState(() {
+          posts = result['posts'] ?? [];
+          totalCount = result['total_count'] ?? 0;
+        });
+        print('✓ Loaded ${posts.length} posts');
       }
     }
   }
@@ -77,6 +81,11 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
         );
       }
+      // Switch to "My Posts" tab and reload
+      setState(() {
+        selectedTab = 1;
+        offset = 0;
+      });
       _loadFeed();
     } else {
       if (mounted) {
@@ -95,16 +104,258 @@ class _FeedScreenState extends State<FeedScreen> {
 
     if (!result.containsKey('error')) {
       _loadFeed();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✓ Like updated'),
+            backgroundColor: Colors.green,
+            duration: Duration(milliseconds: 1000),
+          ),
+        );
+      }
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${result['error']}'),
+            content: Text('❌ Error: ${result['error']}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
     }
+  }
+
+  Future<void> _repostPost(String postId) async {
+    final result = await PostService.repost(postId);
+
+    if (!result.containsKey('error')) {
+      _loadFeed();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✓ Repost updated'),
+            backgroundColor: Colors.green,
+            duration: Duration(milliseconds: 1000),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error: ${result['error']}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showCommentSheet(Post post) async {
+    final commentController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return FractionallySizedBox(
+          heightFactor: 0.75,
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    )
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Comments',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: FutureBuilder<Map<String, dynamic>>(
+                  future: PostService.getComments(post.id),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(primary),
+                        ),
+                      );
+                    }
+
+                    if (snapshot.hasError || snapshot.data?.containsKey('error') == true) {
+                      return Center(
+                        child: Text('Error loading comments: ${snapshot.data?['error'] ?? snapshot.error}'),
+                      );
+                    }
+
+                    final comments = snapshot.data?['comments'] as List<Comment>? ?? [];
+
+                    return ListView.builder(
+                      itemCount: comments.length,
+                      itemBuilder: (context, index) {
+                        final comment = comments[index];
+                        return Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: primary.withOpacity(0.2),
+                                    child: Text(
+                                      (comment.creator?['name'] ?? 'U')[0].toUpperCase(),
+                                      style: TextStyle(
+                                        color: primary,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          comment.creator?['name'] ?? 'Unknown',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        Text(
+                                          _formatTime(comment.createdAt),
+                                          style: TextStyle(
+                                            color: Colors.grey[500],
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                comment.content,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  height: 1.4,
+                                ),
+                              ),
+                              Divider(
+                                color: Colors.grey[200],
+                                height: 16,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 12,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, -2),
+                    )
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: commentController,
+                        decoration: InputDecoration(
+                          hintText: 'Add a comment...',
+                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide(color: primary),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                        ),
+                        maxLines: 1,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (commentController.text.isEmpty) return;
+
+                        final result = await PostService.addComment(
+                          post.id,
+                          commentController.text,
+                        );
+
+                        if (!result.containsKey('error')) {
+                          commentController.clear();
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            _loadFeed();
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                      child: const Icon(Icons.send, size: 18),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   String _formatTime(DateTime dateTime) {
@@ -137,6 +388,12 @@ class _FeedScreenState extends State<FeedScreen> {
         backgroundColor: primary,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadFeed,
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -194,6 +451,39 @@ class _FeedScreenState extends State<FeedScreen> {
               ],
             ),
           ),
+          // Tab switcher
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: Colors.white,
+            child: Row(
+              children: [
+                Expanded(
+                  child: SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 0,
+                        label: Text('Feed'),
+                        icon: Icon(Icons.feed),
+                      ),
+                      ButtonSegment(
+                        value: 1,
+                        label: Text('My Posts'),
+                        icon: Icon(Icons.person),
+                      ),
+                    ],
+                    selected: <int>{selectedTab},
+                    onSelectionChanged: (Set<int> newSelection) {
+                      setState(() {
+                        selectedTab = newSelection.first;
+                        offset = 0; // Reset pagination
+                        _loadFeed();
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Posts feed
           Expanded(
             child: isLoading
@@ -218,7 +508,25 @@ class _FeedScreenState extends State<FeedScreen> {
                               style: TextStyle(
                                 color: Colors.grey[500],
                                 fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Connect with friends to see their posts',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: _loadFeed,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primary,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Refresh'),
                             ),
                           ],
                         ),
@@ -299,34 +607,76 @@ class _FeedScreenState extends State<FeedScreen> {
                                 const SizedBox(height: 12),
                                 // Actions
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                   child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                     children: [
-                                      ElevatedButton.icon(
-                                        onPressed: () => _likePost(post.id),
-                                        icon: const Icon(Icons.favorite_border, size: 18),
-                                        label: Text('${post.likesCount}'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.grey[200],
-                                          foregroundColor: primary,
-                                          elevation: 0,
+                                      // Like button
+                                      InkWell(
+                                        onTap: () => _likePost(post.id),
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              post.isLiked ? Icons.favorite : Icons.favorite_border,
+                                              color: post.isLiked ? Colors.red : Colors.grey[600],
+                                              size: 20,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${post.likesCount}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
-                                      ElevatedButton.icon(
-                                        onPressed: () {},
-                                        icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                                        label: const Text('Comment'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.grey[200],
-                                          foregroundColor: primary,
-                                          elevation: 0,
+                                      // Comment button
+                                      InkWell(
+                                        onTap: () => _showCommentSheet(post),
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              Icons.chat_bubble_outline,
+                                              color: Colors.grey[600],
+                                              size: 20,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${post.commentsCount}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Repost button
+                                      InkWell(
+                                        onTap: () => _repostPost(post.id),
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              Icons.repeat,
+                                              color: post.isReposted ? primary : Colors.grey[600],
+                                              size: 20,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${post.repostsCount}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 12),
                               ],
                             ),
                           );

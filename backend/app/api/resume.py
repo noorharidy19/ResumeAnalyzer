@@ -63,8 +63,13 @@ async def analyze_resume(
         if not file.filename.lower().endswith(".pdf"):
             raise HTTPException(status_code=400, detail="File must be a PDF")
 
-        # Save uploaded file
-        file_path = os.path.join(UPLOAD_DIR, file.filename)
+        # Generate analysis ID (before saving, so we know the filename)
+        from datetime import datetime
+        analysis_id = f"analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Save uploaded file with analysis_id as name
+        pdf_filename = f"{analysis_id}.pdf"
+        file_path = os.path.join(UPLOAD_DIR, pdf_filename)
         with open(file_path, "wb") as f:
             content = await file.read()
             f.write(content)
@@ -86,14 +91,11 @@ async def analyze_resume(
         print(f"[API] Running Phase 3...")
         phase3_result = run_phase3(phase1_result, phase2_result)
 
-        # Generate analysis ID
-        from datetime import datetime
-        analysis_id = f"analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
         # Save complete analysis
         analysis_output = {
             "analysis_id": analysis_id,
-            "filename": file.filename,
+            "filename": file.filename,  # Original filename for display
+            "pdf_path": pdf_filename,    # Saved PDF filename
             "phase1": phase1_result,
             "phase2": phase2_result,
             "phase3": phase3_result,
@@ -200,14 +202,28 @@ async def download_analysis(analysis_id: str):
 @router.delete("/history/{analysis_id}")
 async def delete_analysis(analysis_id: str):
     """
-    Delete a saved analysis
+    Delete a saved analysis (removes both JSON and PDF files)
     """
     try:
-        file_path = os.path.join(UPLOAD_DIR, f"{analysis_id}.json")
-        if not os.path.exists(file_path):
+        json_path = os.path.join(UPLOAD_DIR, f"{analysis_id}.json")
+        pdf_path = os.path.join(UPLOAD_DIR, f"{analysis_id}.pdf")
+        
+        json_exists = os.path.exists(json_path)
+        pdf_exists = os.path.exists(pdf_path)
+        
+        if not json_exists and not pdf_exists:
             raise HTTPException(status_code=404, detail="Analysis not found")
 
-        os.remove(file_path)
+        # Delete JSON file
+        if json_exists:
+            os.remove(json_path)
+            print(f"[API] Deleted analysis JSON: {analysis_id}")
+        
+        # Delete PDF file
+        if pdf_exists:
+            os.remove(pdf_path)
+            print(f"[API] Deleted analysis PDF: {analysis_id}")
+            
         return {"status": "success", "message": f"Analysis {analysis_id} deleted"}
 
     except FileNotFoundError:

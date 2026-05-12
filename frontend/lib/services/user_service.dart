@@ -65,4 +65,36 @@ class UserService {
       return {'error': e.toString()};
     }
   }
+
+  // Update user profile
+  static Future<Map<String, dynamic>> updateProfile({
+    required String name,
+    required String email,
+    required String phoneNumber,
+  }) async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/users/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'name': name,
+          'phone_number': phoneNumber,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return {'error': 'Failed to update profile'};
+      }
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
 }
