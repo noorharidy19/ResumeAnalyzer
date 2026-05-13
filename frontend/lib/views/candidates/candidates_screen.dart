@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../services/connection_service.dart';
+import '../../utils/responsive_helper.dart';
 
 class CandidatesScreen extends StatefulWidget {
   const CandidatesScreen({super.key});
@@ -170,13 +171,17 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final padding = ResponsiveHelper.getResponsivePadding(context);
+
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         title: const Text('Candidates'),
-        backgroundColor: Colors.white,
+        backgroundColor: primary,
         elevation: 0,
-        foregroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        centerTitle: isMobile,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -199,7 +204,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                     children: [
                       Icon(
                         Icons.error,
-                        size: 64,
+                        size: isMobile ? 48 : 64,
                         color: Colors.red[300],
                       ),
                       const SizedBox(height: 16),
@@ -207,7 +212,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                         'Error loading candidates',
                         style: TextStyle(
                           color: Colors.grey[600],
-                          fontSize: 16,
+                          fontSize: isMobile ? 14 : 16,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -231,7 +236,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                         children: [
                           Icon(
                             Icons.check_circle,
-                            size: 64,
+                            size: isMobile ? 48 : 64,
                             color: Colors.green[300],
                           ),
                           const SizedBox(height: 16),
@@ -239,7 +244,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                             'All caught up! 🎉',
                             style: TextStyle(
                               color: Colors.grey[600],
-                              fontSize: 16,
+                              fontSize: isMobile ? 14 : 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -248,7 +253,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                             'No new candidates available',
                             style: TextStyle(
                               color: Colors.grey[500],
-                              fontSize: 14,
+                              fontSize: isMobile ? 12 : 14,
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -256,20 +261,20 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                             '(You\'ve connected or have pending requests with everyone)',
                             style: TextStyle(
                               color: Colors.grey[400],
-                              fontSize: 12,
+                              fontSize: isMobile ? 10 : 12,
                             ),
                           ),
                         ],
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: padding,
                       itemCount: candidates.length,
                       itemBuilder: (context, index) {
                         final candidate = candidates[index];
 
                         return Container(
-                          margin: const EdgeInsets.only(bottom: 16),
+                          margin: EdgeInsets.only(bottom: isMobile ? 12 : 16),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
@@ -286,7 +291,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
                             children: [
                               // Header with gradient background
                               Container(
-                                padding: const EdgeInsets.all(16),
+                                padding: EdgeInsets.all(isMobile ? 12 : 16),
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [

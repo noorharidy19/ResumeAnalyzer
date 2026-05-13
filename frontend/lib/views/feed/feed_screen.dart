@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/post_service.dart';
+import '../../utils/responsive_helper.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -381,6 +382,9 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final padding = ResponsiveHelper.getResponsivePadding(context);
+
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
@@ -388,6 +392,7 @@ class _FeedScreenState extends State<FeedScreen> {
         backgroundColor: primary,
         foregroundColor: Colors.white,
         elevation: 0,
+        centerTitle: isMobile,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -399,7 +404,7 @@ class _FeedScreenState extends State<FeedScreen> {
         children: [
           // Create post box
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: padding,
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
@@ -425,12 +430,12 @@ class _FeedScreenState extends State<FeedScreen> {
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide(color: primary),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 12 : 16,
+                      vertical: isMobile ? 10 : 12,
                     ),
                   ),
-                  maxLines: 3,
+                  maxLines: isMobile ? 2 : 3,
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
@@ -440,7 +445,9 @@ class _FeedScreenState extends State<FeedScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(
+                        vertical: isMobile ? 10 : 12,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),

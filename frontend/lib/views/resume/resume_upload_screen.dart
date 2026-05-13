@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../services/resume_analyzer_service.dart';
 import 'resume_analysis_screen.dart';
+import '../../utils/responsive_helper.dart';
 
 class ResumeUploadScreen extends StatefulWidget {
   const ResumeUploadScreen({super.key});
@@ -105,96 +106,147 @@ class _ResumeUploadScreenState extends State<ResumeUploadScreen> {
   Widget build(BuildContext context) {
     const primary = Color(0xFF5C6BC0);
     const bg = Color(0xFFF6F8FF);
+    
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final padding = ResponsiveHelper.getResponsivePadding(context);
+    final cardPadding = isMobile ? 16.0 : 24.0;
+    final fontSize = ResponsiveHelper.getResponsiveFontSize(
+      context,
+      mobileSize: 16,
+      tabletSize: 18,
+      desktopSize: 20,
+    );
 
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: primary,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: primary),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Resume Analyzer',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
+        padding: padding,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Card(
-                    elevation: 6,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Icon(
-                            Icons.description,
-                            size: 48,
-                            color: primary,
+            constraints: BoxConstraints(maxWidth: isMobile ? 500 : 720),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Card(
+                  elevation: 6,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(cardPadding),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Icon(
+                          Icons.description,
+                          size: isMobile ? 36 : 48,
+                          color: primary,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Upload Your Resume',
+                          style: TextStyle(
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Upload Your Resume',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Select a PDF file to analyze and get job recommendations',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        // File preview
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: primary,
+                              width: 2,
+                              style: BorderStyle.solid,
                             ),
+                            borderRadius: BorderRadius.circular(12),
+                            color: primary.withOpacity(0.05),
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Select a PDF file to analyze and get job recommendations',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          // File preview
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
+                          padding: EdgeInsets.all(isMobile ? 20 : 32),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.upload_file,
+                                size: isMobile ? 36 : 48,
                                 color: primary,
-                                width: 2,
-                                style: BorderStyle.solid,
                               ),
-                              borderRadius: BorderRadius.circular(12),
-                              color: primary.withOpacity(0.05),
-                            ),
-                            padding: const EdgeInsets.all(32),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.upload_file,
-                                  size: 48,
-                                  color: primary,
+                              const SizedBox(height: 12),
+                              Text(
+                                _fileName ?? 'No file selected',
+                                style: TextStyle(
+                                  fontSize: isMobile ? 12 : 14,
+                                  color: _fileName != null ? Colors.black : Colors.grey,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _fileName ?? 'No file selected',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: _fileName != null ? Colors.black : Colors.grey,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 24),
-                          // Buttons
+                        ),
+                        const SizedBox(height: 24),
+                        // Buttons - Stack on mobile
+                        if (isMobile)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: _isLoading ? null : _pickFile,
+                                icon: const Icon(Icons.folder_open),
+                                label: const Text('Choose PDF'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primary,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              ElevatedButton.icon(
+                                onPressed: (_fileName == null || _isLoading)
+                                    ? null
+                                    : _analyzeResume,
+                                icon: _isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                                        ),
+                                      )
+                                    : const Icon(Icons.analytics),
+                                label: Text(
+                                  _isLoading ? 'Analyzing...' : 'Analyze Resume',
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primary,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                            ],
+                          )
+                        else
                           Row(
                             children: [
                               Expanded(
@@ -208,11 +260,7 @@ class _ResumeUploadScreenState extends State<ResumeUploadScreen> {
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: (_fileName == null || _isLoading)
@@ -239,31 +287,30 @@ class _ResumeUploadScreenState extends State<ResumeUploadScreen> {
                               ),
                             ],
                           ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  // Info cards
-                  _buildInfoCard(
-                    'Phase 1',
-                    'Resume Extraction',
-                    'Extract personal info, skills, education, and experience from PDF',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoCard(
-                    'Phase 2',
-                    'Job Matching',
-                    'Find matching jobs using AI and skill analysis',
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoCard(
-                    'Phase 3',
-                    'AI Analysis',
-                    'Get career advice, interview questions, and learning path',
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 24),
+                // Info cards
+                _buildInfoCard(
+                  'Phase 1',
+                  'Resume Extraction',
+                  'Extract personal info, skills, education, and experience from PDF',
+                ),
+                const SizedBox(height: 12),
+                _buildInfoCard(
+                  'Phase 2',
+                  'Job Matching',
+                  'Find matching jobs using AI and skill analysis',
+                ),
+                const SizedBox(height: 12),
+                _buildInfoCard(
+                  'Phase 3',
+                  'AI Analysis',
+                  'Get career advice, interview questions, and learning path',
+                ),
+              ],
             ),
           ),
         ),

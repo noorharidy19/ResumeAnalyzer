@@ -14,6 +14,7 @@ import '../profile/my_profile_screen.dart';
 import '../../services/message_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/user_service.dart';
+import '../../utils/responsive_helper.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -91,219 +92,293 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bg,
-      body: Row(
-        children: [
-          // Left Sidebar
-          Container(
-            width: 250,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(2, 0),
-                )
-              ],
-            ),
-            child: Column(
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: primary,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      )
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(60),
-                          image: profilePictureUrl != null && profilePictureUrl!.isNotEmpty
-                              ? DecorationImage(
-                                  image: NetworkImage(
-                                    'http://localhost:8001/${profilePictureUrl!.replaceAll(r'\', '/')}',
-                                  ),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                        child: profilePictureUrl == null || profilePictureUrl!.isEmpty
-                            ? GestureDetector(
-                                onTap: isLoggedIn
-                                    ? () async {
-                                        final picker = ImagePicker();
-                                        final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-                                        if (pickedFile != null) {
-                                          // Handle image upload
-                                        }
-                                      }
-                                    : null,
-                                child: Icon(
-                                  Icons.person,
-                                  color: primary,
-                                  size: 30,
-                                ),
-                              )
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        userName ?? 'Guest User',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        userEmail ?? 'not logged in',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      if (!isLoggedIn)
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                              ).then((_) => loadUser());
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: primary,
-                            ),
-                            child: const Text('Login'),
-                          ),
-                        ),
-                      if (isLoggedIn)
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              await SharedPreferences.getInstance().then((prefs) {
-                                prefs.remove('access_token');
-                                prefs.remove('user_email');
-                                prefs.remove('user_name');
-                                prefs.remove('profile_picture');
-                              });
-                              setState(() {
-                                isLoggedIn = false;
-                                userName = null;
-                                userEmail = null;
-                                profilePictureUrl = null;
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text('Logout'),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                // Menu items
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.all(12),
-                    children: [
-                      _sideItem(Icons.home, "Dashboard", true),
-                      _sideItem(Icons.person, "My Profile", false),
-                      _sideItem(Icons.description, "Resume Analyzer", false),
-                      _sideItem(Icons.people, "Candidates", false),
-                      _sideItem(Icons.forum, "Community", false),
-                      _sideItem(Icons.mail, "Messages", false, badgeCount: totalUnreadMessages),
-                      _sideItem(Icons.feed, "Feed", false),
-                      _sideItem(Icons.notifications, "Notifications", false, badgeCount: totalUnreadNotifications),
-                      _sideItem(Icons.analytics, "Analytics", false),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Main Content
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(30),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Welcome to Resume Analyzer",
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Your AI-powered recruitment platform.",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                  ),
-                  const SizedBox(height: 30),
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        )
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Getting Started",
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          "Use the menu on the left to navigate through different features:",
-                          style: TextStyle(color: Colors.grey[700]),
-                        ),
-                        const SizedBox(height: 16),
-                        _featureItem("📄", "Resume Analyzer", "Upload and analyze your resume with AI-powered insights"),
-                        _featureItem("👥", "Candidates", "Browse and connect with other professionals"),
-                        _featureItem("💬", "Community", "Join discussions and share your experience"),
-                        _featureItem("✉️", "Messages", "Communicate with connections"),
-                        _featureItem("📰", "Feed", "View posts from your network"),
-                        _featureItem("📊", "Analytics", "View detailed analytics and history"),
-                      ],
-                    ),
-                  ),
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final isTablet = ResponsiveHelper.isTablet(context);
+    final padding = ResponsiveHelper.getResponsivePadding(context);
+    final titleFontSize = ResponsiveHelper.getResponsiveFontSize(
+      context,
+      mobileSize: 20,
+      tabletSize: 24,
+      desktopSize: 32,
+    );
+
+    if (isMobile) {
+      // Mobile: Use drawer layout
+      return Scaffold(
+        backgroundColor: bg,
+        appBar: AppBar(
+          title: const Text("Resume Analyzer"),
+          backgroundColor: primary,
+          elevation: 0,
+          centerTitle: true,
+        ),
+        drawer: _buildSidebar(),
+        body: SingleChildScrollView(
+          padding: padding,
+          child: _buildMainContent(titleFontSize),
+        ),
+      );
+    } else if (isTablet) {
+      // Tablet: Collapsed sidebar or bottom navigation
+      return Scaffold(
+        backgroundColor: bg,
+        body: Row(
+          children: [
+            Container(
+              width: 200,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(2, 0),
+                  )
                 ],
               ),
+              child: _buildSidebarContent(),
             ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: padding,
+                child: _buildMainContent(titleFontSize),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Desktop: Full sidebar layout
+      return Scaffold(
+        backgroundColor: bg,
+        body: Row(
+          children: [
+            Container(
+              width: 250,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(2, 0),
+                  )
+                ],
+              ),
+              child: _buildSidebarContent(),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: padding,
+                child: _buildMainContent(titleFontSize),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildSidebar() {
+    return Drawer(
+      child: _buildSidebarContent(),
+    );
+  }
+
+  Widget _buildSidebarContent() {
+    return Column(
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: primary,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              )
+            ],
           ),
-        ],
-      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(60),
+                  image: profilePictureUrl != null && profilePictureUrl!.isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(
+                            'http://localhost:8001/${profilePictureUrl!.replaceAll(r'\', '/')}',
+                          ),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: profilePictureUrl == null || profilePictureUrl!.isEmpty
+                    ? GestureDetector(
+                        onTap: isLoggedIn
+                            ? () async {
+                                final picker = ImagePicker();
+                                final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+                                if (pickedFile != null) {
+                                  // Handle image upload
+                                }
+                              }
+                            : null,
+                        child: Icon(
+                          Icons.person,
+                          color: primary,
+                          size: 30,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                userName ?? 'Guest User',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                userEmail ?? 'not logged in',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 12,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 16),
+              if (!isLoggedIn)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      ).then((_) => loadUser());
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: primary,
+                    ),
+                    child: const Text('Login'),
+                  ),
+                ),
+              if (isLoggedIn)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      await SharedPreferences.getInstance().then((prefs) {
+                        prefs.remove('access_token');
+                        prefs.remove('user_email');
+                        prefs.remove('user_name');
+                        prefs.remove('profile_picture');
+                      });
+                      setState(() {
+                        isLoggedIn = false;
+                        userName = null;
+                        userEmail = null;
+                        profilePictureUrl = null;
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Logout'),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        // Menu items
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(12),
+            children: [
+              _sideItem(Icons.home, "Dashboard", true),
+              _sideItem(Icons.person, "My Profile", false),
+              _sideItem(Icons.description, "Resume Analyzer", false),
+              _sideItem(Icons.people, "Candidates", false),
+              _sideItem(Icons.forum, "Community", false),
+              _sideItem(Icons.mail, "Messages", false, badgeCount: totalUnreadMessages),
+              _sideItem(Icons.feed, "Feed", false),
+              _sideItem(Icons.notifications, "Notifications", false, badgeCount: totalUnreadNotifications),
+              _sideItem(Icons.analytics, "Analytics", false),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMainContent(double titleFontSize) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Welcome to Resume Analyzer",
+          style: TextStyle(
+            fontSize: titleFontSize,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "Your AI-powered recruitment platform.",
+          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+        ),
+        const SizedBox(height: 30),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              )
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Getting Started",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                ResponsiveHelper.isMobile(context)
+                    ? "Tap the menu to navigate features:"
+                    : "Use the menu on the left to navigate through different features:",
+                style: TextStyle(color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 16),
+              _featureItem("📄", "Resume Analyzer", "Upload and analyze your resume with AI-powered insights"),
+              _featureItem("👥", "Candidates", "Browse and connect with other professionals"),
+              _featureItem("💬", "Community", "Join discussions and share your experience"),
+              _featureItem("✉️", "Messages", "Communicate with connections"),
+              _featureItem("📰", "Feed", "View posts from your network"),
+              _featureItem("📊", "Analytics", "View detailed analytics and history"),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

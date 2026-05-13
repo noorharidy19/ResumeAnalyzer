@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../services/connection_service.dart';
 import '../../services/message_service.dart';
+import '../../utils/responsive_helper.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -724,32 +725,35 @@ class _MessagesScreenState extends State<MessagesScreen> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveHelper.isMobile(context);
+
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         title: const Text('Connections'),
-        backgroundColor: Colors.white,
+        backgroundColor: primary,
         elevation: 0,
-        foregroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        centerTitle: isMobile,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: TabBar(
             controller: _tabController,
-            labelColor: primary,
-            unselectedLabelColor: Colors.grey[600],
-            indicatorColor: primary,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
             indicatorWeight: 3,
             tabs: [
               Tab(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.people),
+                    const Icon(Icons.people, size: 20),
                     const SizedBox(height: 2),
                     Text(
                       'Accepted',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: isMobile ? 10 : 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -760,12 +764,12 @@ class _MessagesScreenState extends State<MessagesScreen> with TickerProviderStat
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.arrow_circle_up_outlined),
+                    const Icon(Icons.arrow_circle_up_outlined, size: 20),
                     const SizedBox(height: 2),
                     Text(
                       'Sent',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: isMobile ? 10 : 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -776,12 +780,12 @@ class _MessagesScreenState extends State<MessagesScreen> with TickerProviderStat
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.arrow_circle_down_outlined),
+                    const Icon(Icons.arrow_circle_down_outlined, size: 20),
                     const SizedBox(height: 2),
                     Text(
                       'Received',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: isMobile ? 10 : 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

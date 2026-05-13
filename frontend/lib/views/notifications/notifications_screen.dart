@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/notification_service.dart' as notif_service;
+import '../../utils/responsive_helper.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -122,6 +123,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveHelper.isMobile(context);
+    
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
@@ -129,6 +132,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         backgroundColor: primary,
         foregroundColor: Colors.white,
         elevation: 0,
+        centerTitle: isMobile,
         actions: [
           if (unreadCount > 0)
             TextButton.icon(
@@ -154,7 +158,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     children: [
                       Icon(
                         Icons.notifications_none,
-                        size: 48,
+                        size: isMobile ? 36 : 48,
                         color: Colors.grey[300],
                       ),
                       const SizedBox(height: 12),
@@ -162,19 +166,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         'No notifications yet',
                         style: TextStyle(
                           color: Colors.grey[500],
-                          fontSize: 16,
+                          fontSize: isMobile ? 14 : 16,
                         ),
                       ),
                     ],
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(isMobile ? 8 : 12),
                   itemCount: notifications.length,
                   itemBuilder: (context, index) {
                     final notif = notifications[index];
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
+                      margin: EdgeInsets.only(bottom: isMobile ? 6 : 8),
                       decoration: BoxDecoration(
                         color: notif.isRead ? Colors.white : primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -183,10 +187,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                       ),
                       child: ListTile(
-                        contentPadding: const EdgeInsets.all(12),
+                        contentPadding: EdgeInsets.all(isMobile ? 8 : 12),
                         leading: Container(
-                          width: 48,
-                          height: 48,
+                          width: isMobile ? 40 : 48,
+                          height: isMobile ? 40 : 48,
                           decoration: BoxDecoration(
                             color: primary.withOpacity(0.15),
                             shape: BoxShape.circle,
@@ -194,7 +198,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           child: Center(
                             child: Text(
                               _getNotificationIcon(notif.notificationType),
-                              style: const TextStyle(fontSize: 24),
+                              style: TextStyle(fontSize: isMobile ? 18 : 24),
                             ),
                           ),
                         ),

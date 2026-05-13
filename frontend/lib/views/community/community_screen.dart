@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/connection_service.dart';
+import '../../utils/responsive_helper.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -84,13 +85,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final padding = ResponsiveHelper.getResponsivePadding(context);
+
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         title: const Text('Community'),
-        backgroundColor: Colors.white,
+        backgroundColor: primary,
         elevation: 0,
-        foregroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        centerTitle: isMobile,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -101,7 +106,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     children: [
                       Icon(
                         Icons.inbox,
-                        size: 64,
+                        size: isMobile ? 48 : 64,
                         color: Colors.grey[300],
                       ),
                       const SizedBox(height: 16),
@@ -109,22 +114,22 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         'No pending requests',
                         style: TextStyle(
                           color: Colors.grey[600],
-                          fontSize: 16,
+                          fontSize: isMobile ? 14 : 16,
                         ),
                       ),
                     ],
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: padding,
                   itemCount: pendingRequests.length,
                   itemBuilder: (context, index) {
                     final request = pendingRequests[index];
                     final sender = request['sender'] ?? {};
 
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
+                      margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
+                      padding: EdgeInsets.all(isMobile ? 12 : 16),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
@@ -141,60 +146,63 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           Row(
                             children: [
                               CircleAvatar(
+                                radius: isMobile ? 18 : 24,
                                 backgroundColor: primary.withOpacity(0.2),
                                 child: Text(
                                   (sender['name'] ?? 'U')[0],
                                   style: TextStyle(
                                     color: primary,
                                     fontWeight: FontWeight.bold,
+                                    fontSize: isMobile ? 12 : 14,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: isMobile ? 8 : 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       sender['name'] ?? 'Unknown User',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: isMobile ? 14 : 16,
                                       ),
                                     ),
                                     Text(
                                       sender['email'] ?? '',
                                       style: TextStyle(
                                         color: Colors.grey[600],
-                                        fontSize: 13,
+                                        fontSize: isMobile ? 11 : 13,
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: isMobile ? 8 : 12),
                           Text(
                             'wants to connect with you',
                             style: TextStyle(
                               color: Colors.grey[600],
-                              fontSize: 14,
+                              fontSize: isMobile ? 12 : 14,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
+                          SizedBox(height: isMobile ? 8 : 12),
+                          if (isMobile)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                OutlinedButton(
                                   onPressed: () =>
                                       _rejectRequest(request['id'], index),
                                   child: const Text('Decline'),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: ElevatedButton(
+                                const SizedBox(height: 8),
+                                ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: primary,
                                   ),
@@ -205,11 +213,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                     style: TextStyle(color: Colors.white),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                              ],
+                            ),
+                          ],
+                        ),
                     );
                   },
                 ),
