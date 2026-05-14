@@ -546,9 +546,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
                       const SizedBox(height: 24),
                       Container(
                         padding: const EdgeInsets.all(16),
