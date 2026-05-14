@@ -507,34 +507,43 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                  const Text(
-                                    'Recent Match Scores',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  if (recentScores.isEmpty)
-                                    Text('No match scores yet.', style: TextStyle(color: Colors.grey[600]))
-                                  else
-                                    ...recentScores.map((row) {
-                                      final filename = row['filename']?.toString() ?? 'Unknown';
-                                      final score = (row['score'] as num?)?.toDouble() ?? 0;
-                                      return ListTile(
-                                        contentPadding: EdgeInsets.zero,
-                                        leading: CircleAvatar(
-                                          radius: 14,
-                                          backgroundColor: primary.withOpacity(0.15),
-                                          child: Icon(Icons.assessment, size: 14, color: primary),
+                                    const Text(
+                                      'Recent Match Scores',
+                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    if (recentScores.isEmpty)
+                                      Text('No match scores yet.', style: TextStyle(color: Colors.grey[600]))
+                                    else
+                                      Expanded(
+                                        child: SingleChildScrollView(
+                                          child: Column(
+                                            children: [
+                                              ...recentScores.map((row) {
+                                                final filename = row['filename']?.toString() ?? 'Unknown';
+                                                final score = (row['score'] as num?)?.toDouble() ?? 0;
+                                                return ListTile(
+                                                  contentPadding: EdgeInsets.zero,
+                                                  leading: CircleAvatar(
+                                                    radius: 14,
+                                                    backgroundColor: primary.withOpacity(0.15),
+                                                    child: Icon(Icons.assessment, size: 14, color: primary),
+                                                  ),
+                                                  title: Text(
+                                                    filename,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                                  ),
+                                                  subtitle: Text('Score: ${score.toStringAsFixed(1)}%'),
+                                                );
+                                              }),
+                                            ],
+                                          ),
                                         ),
-                                        title: Text(
-                                          filename,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                                        ),
-                                        subtitle: Text('Score: ${score.toStringAsFixed(1)}%'),
-                                      );
-                                    }),
-                                ],
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
