@@ -398,7 +398,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
                                     'Top Skills Across CVs',
@@ -426,10 +426,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                               ],
                                             ),
                                             const SizedBox(height: 6),
-                                            LinearProgressIndicator(
-                                              value: progress,
-                                              backgroundColor: primary.withOpacity(0.15),
-                                              valueColor: AlwaysStoppedAnimation(primary),
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: LinearProgressIndicator(
+                                                value: progress,
+                                                backgroundColor: primary.withOpacity(0.15),
+                                                valueColor: AlwaysStoppedAnimation(primary),
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -450,7 +453,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
                                     'Top Skills Across CVs',
@@ -478,10 +481,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                               ],
                                             ),
                                             const SizedBox(height: 6),
-                                            LinearProgressIndicator(
-                                              value: progress,
-                                              backgroundColor: primary.withOpacity(0.15),
-                                              valueColor: AlwaysStoppedAnimation(primary),
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: LinearProgressIndicator(
+                                                value: progress,
+                                                backgroundColor: primary.withOpacity(0.15),
+                                                valueColor: AlwaysStoppedAnimation(primary),
+                                              ),
                                             ),
                                           ],
                                         ),
