@@ -17,8 +17,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# removed global lib/ and lib64/ ignore so frontend/lib can be tracked
+# lib/
+# lib64/
 parts/
 sdist/
 var/
