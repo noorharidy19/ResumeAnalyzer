@@ -16,6 +16,9 @@ from pydantic import BaseModel
 from app.models.phase1 import analyze_resume_phase1
 from app.models.phase2 import run_phase2
 from app.models.phase3 import run_phase3
+from fastapi import BackgroundTasks
+from app.services.cv_enhancement import enhance_cv
+
 
 router = APIRouter(prefix="/api/resume", tags=["resume"])
 
@@ -35,6 +38,7 @@ class ResumeAnalysisResponse(BaseModel):
 
 @router.post("/analyze", response_model=ResumeAnalysisResponse)
 async def analyze_resume(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     top_k: Optional[int] = 3,
     use_external_jobs: Optional[bool] = True,
@@ -107,6 +111,13 @@ async def analyze_resume(
             json.dump(analysis_output, f, indent=2, ensure_ascii=False)
 
         print(f"[API] Analysis complete. Saved to {output_path}")
+        
+        background_tasks.add_task(
+            enhance_cv,
+            analysis_id=analysis_id,
+            phase1_data=phase1_result,
+            phase2_data=phase2_result,
+        )
 
         return ResumeAnalysisResponse(
             phase1=phase1_result,

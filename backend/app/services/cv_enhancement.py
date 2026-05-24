@@ -43,31 +43,32 @@ def _row_to_response(row: CVEnhancement) -> EnhancementResponse:
 # ── Public service functions ───────────────────────────────────────────────────
 
 def enhance_cv(
-    db: Session,
-    analysis_id: int,
-    user_id: int,
+    analysis_id: str,
     phase1_data: dict,
     phase2_data: dict,
     target_job: str | None = None,
-) -> EnhancementResponse:
+) -> dict:
     """
-    Run Phase 4 AI enhancement and persist the result.
-    Called as a BackgroundTask after Phase 3 completes, or manually from the API.
-    Creates a new row each time (preserves history if user re-runs with different target_job).
+    Run Phase 4 and save the result as a JSON sidecar file next to the analysis.
+    Saved to: uploads/resumes/{analysis_id}_enhancement.json
     """
+    from app.models.phase4 import run_phase4
+    import json, os
+
     phase4_result = run_phase4(phase1_data, phase2_data, target_job)
 
-    row = CVEnhancement(
-        analysis_id=analysis_id,
-        user_id=user_id,
-        target_job=target_job,
-        phase4_json=json.dumps(phase4_result),
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
+    output = {
+        "analysis_id": analysis_id,
+        "target_job": target_job,
+        "phase4": phase4_result,
+    }
 
-    return _row_to_response(row)
+    output_path = os.path.join("uploads/resumes", f"{analysis_id}_enhancement.json")
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+
+    print(f"[CV Enhancement] Saved to {output_path}")
+    return output
 
 
 def get_enhancement(
