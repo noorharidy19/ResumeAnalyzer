@@ -126,3 +126,73 @@ async def upload_profile_picture(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+
+
+@router.delete("/profile-picture")
+def delete_profile_picture(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete current user's profile picture"""
+    user_id = current_user.get("id")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    try:
+        if user.profile_picture and os.path.exists(user.profile_picture):
+            try:
+                os.remove(user.profile_picture)
+            except Exception:
+                pass
+
+        user.profile_picture = None
+        db.commit()
+
+        return {"message": "Profile picture deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting profile picture: {str(e)}")
+
+
+@router.put("/profile")
+def update_profile(
+    payload: dict,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update current user's profile (name, phone_number)"""
+    user_id = current_user.get("id")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    name = payload.get('name')
+    phone_number = payload.get('phone_number')
+
+    # Validate required fields
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+
+    # If phone number provided, check uniqueness
+    if phone_number:
+        existing = db.query(User).filter(User.phone_number == phone_number, User.id != user_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Phone number already in use by another account")
+
+    # Update
+    user.name = name
+    user.phone_number = phone_number
+    db.commit()
+
+    return {
+        "message": "Profile updated",
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "phone_number": user.phone_number,
+            "profile_picture": user.profile_picture
+        }
+    }

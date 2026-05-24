@@ -64,7 +64,7 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
             isLoading = false;
           });
 
-          widget.onPictureUpdated();
+          widget.onPictureUpdated(); // notify parent to refresh profile data
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -108,6 +108,9 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
   @override
   Widget build(BuildContext context) {
     final Color primary = const Color(0xFF7C8CF8);
+    final screenWidth = MediaQuery.of(context).size.width;
+    // image size: use 80% of screen width on small screens, clamp to 360 on larger screens
+    final double imgSize = screenWidth * 0.8 > 360 ? 360 : screenWidth * 0.8;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -167,13 +170,13 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
                   children: [
                     Image.network(
                       'http://localhost:8001/${currentImageUrl}',
-                      width: 300,
-                      height: 300,
+                      width: imgSize,
+                      height: imgSize,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          width: 300,
-                          height: 300,
+                          width: imgSize,
+                          height: imgSize,
                           decoration: BoxDecoration(
                             color: primary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
@@ -181,15 +184,15 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
                           child: Icon(
                             Icons.image_not_supported,
                             color: primary,
-                            size: 60,
+                            size: imgSize * 0.18,
                           ),
                         );
                       },
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
                         return Container(
-                          width: 300,
-                          height: 300,
+                          width: imgSize,
+                          height: imgSize,
                           decoration: BoxDecoration(
                             color: Colors.grey[200],
                             borderRadius: BorderRadius.circular(12),
@@ -222,29 +225,92 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
               ),
             ),
 
-            // Action Buttons
+            // Action Buttons (responsive: row on wide screens, column on narrow screens)
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: isLoading ? null : _uploadNewPicture,
-                    icon: const Icon(Icons.cloud_upload),
-                    label: const Text('Change Picture'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey[300],
-                    ),
+              child: LayoutBuilder(builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 420;
+                final buttonSpacing = SizedBox(width: isNarrow ? 0 : 12, height: isNarrow ? 12 : 0);
+
+                final changeBtn = ElevatedButton.icon(
+                  onPressed: isLoading ? null : _uploadNewPicture,
+                  icon: const Icon(Icons.cloud_upload),
+                  label: const Text('Change Picture'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                    foregroundColor: Colors.white,
                   ),
-                  OutlinedButton.icon(
-                    onPressed: isLoading ? null : () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                    label: const Text('Close'),
-                  ),
-                ],
-              ),
+                );
+
+                final deleteBtn = OutlinedButton.icon(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setState(() {
+                            isLoading = true;
+                          });
+                          final result = await UserService.deleteProfilePicture();
+                          if (!mounted) return;
+                          setState(() {
+                            isLoading = false;
+                          });
+
+                          if (!result.containsKey('error')) {
+                            // remove from prefs
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.remove('profile_picture');
+
+                            widget.onPictureUpdated();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Profile picture deleted'), backgroundColor: Colors.green),
+                              );
+                            }
+                            Navigator.pop(context);
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: ${result['error']}'), backgroundColor: Colors.red),
+                              );
+                            }
+                          }
+                        },
+                  icon: const Icon(Icons.delete_forever),
+                  label: const Text('Delete'),
+                );
+
+                final closeBtn = OutlinedButton.icon(
+                  onPressed: isLoading ? null : () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                  label: const Text('Close'),
+                );
+
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(height: 4),
+                      SizedBox(width: double.infinity, child: changeBtn),
+                      buttonSpacing,
+                      SizedBox(width: double.infinity, child: deleteBtn),
+                      buttonSpacing,
+                      SizedBox(width: double.infinity, child: closeBtn),
+                    ],
+                  );
+                }
+
+                // wide layout: row with spacing
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(child: changeBtn),
+                    buttonSpacing,
+                    Flexible(child: deleteBtn),
+                    buttonSpacing,
+                    Flexible(child: closeBtn),
+                  ],
+                );
+              }),
             ),
           ],
         ),

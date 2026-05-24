@@ -16,6 +16,7 @@ SessionLocal = sessionmaker(bind=engine)
 
 Base = declarative_base()
 
+
 # 🧪 test connection
 if __name__ == "__main__":
     try:

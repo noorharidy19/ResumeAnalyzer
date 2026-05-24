@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:image_picker/image_picker.dart';
 import '../auth/login_screen.dart';
 import '../resume/resume_upload_screen.dart';
 import '../candidates/candidates_screen.dart';
@@ -13,17 +13,18 @@ import '../profile/profile_picture_viewer.dart';
 import '../profile/my_profile_screen.dart';
 import '../../services/message_service.dart';
 import '../../services/notification_service.dart';
-import '../../services/user_service.dart';
-import '../../utils/responsive_helper.dart';
 
-class DashboardScreen extends StatefulWidget {
+import '../../utils/responsive_helper.dart';
+import '../../core/providers.dart';
+
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String? userEmail;
   String? userName;
   String? profilePictureUrl;
@@ -204,39 +205,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(60),
-                  image: profilePictureUrl != null && profilePictureUrl!.isNotEmpty
-                      ? DecorationImage(
-                          image: NetworkImage(
-                            'http://localhost:8001/${profilePictureUrl!.replaceAll(r'\', '/')}',
+              GestureDetector(
+                onTap: isLoggedIn
+                    ? () async {
+                        await showDialog(
+                          context: context,
+                          builder: (_) => ProfilePictureViewer(
+                            profilePictureUrl: profilePictureUrl ?? '',
+                            userName: userName ?? '',
+                            userEmail: userEmail ?? '',
+                            onPictureUpdated: () async {
+                              await ref.read(profileProvider.notifier).refresh();
+                              final profile = ref.read(profileProvider);
+                              setState(() {
+                                profilePictureUrl = profile.profilePicture;
+                                userName = profile.name;
+                                userEmail = profile.email;
+                              });
+                            },
                           ),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: profilePictureUrl == null || profilePictureUrl!.isEmpty
-                    ? GestureDetector(
-                        onTap: isLoggedIn
-                            ? () async {
-                                final picker = ImagePicker();
-                                final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-                                if (pickedFile != null) {
-                                  // Handle image upload
-                                }
-                              }
-                            : null,
-                        child: Icon(
+                        );
+                      }
+                    : null,
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(60),
+                    image: profilePictureUrl != null && profilePictureUrl!.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(
+                              'http://10.0.2.2:8001/${profilePictureUrl!.replaceAll(r'\\', '/')}',
+                            ),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  child: profilePictureUrl == null || profilePictureUrl!.isEmpty
+                      ? Icon(
                           Icons.person,
                           color: primary,
                           size: 30,
-                        ),
-                      )
-                    : null,
+                        )
+                      : null,
+                ),
               ),
               const SizedBox(height: 12),
               Text(

@@ -5,6 +5,7 @@ import 'interview_questions_screen.dart';
 import 'career_path_screen.dart';
 
 class ResumeAnalysisScreen extends StatefulWidget {
+  // json response from backend after analyzing resume, contains all data for different phases
   final Map<String, dynamic> analysisData;
 
   const ResumeAnalysisScreen({
@@ -137,6 +138,7 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
     );
   }
 
+  //Data resume extracted
   Widget _buildPhase1View(
     Map<String, dynamic> phase1,
     Color primary,

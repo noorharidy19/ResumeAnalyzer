@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ResumeAnalyzerService {
-  static const String baseUrl = 'http://localhost:8001/api/resume';
+  static const String baseUrl = 'http://10.0.2.2:8001/api/resume';
 
   /// Upload resume PDF and get full analysis (Phase 1, 2, 3)
   static Future<Map<String, dynamic>> analyzeResume(

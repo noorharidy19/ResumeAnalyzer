@@ -86,7 +86,7 @@ class Post {
 }
 
 class PostService {
-  static const String baseUrl = 'http://localhost:8001/api';
+  static const String baseUrl = 'http://10.0.2.2:8001/api';
 
   static Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -132,19 +132,25 @@ class PostService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print('📤 Feed API Response: ${response.body.substring(0, 200)}...');
-        return {
-          'posts': (data['posts'] as List).map((p) {
-            print('📝 Parsing post: $p');
-            return Post.fromJson(p);
-          }).toList(),
-          'total_count': data['total_count'],
-        };
+        try {
+          final data = jsonDecode(response.body);
+          print('📤 Feed API Response (truncated): ${response.body.length > 200 ? response.body.substring(0, 200) + '...' : response.body}');
+          return {
+            'posts': (data['posts'] as List).map((p) {
+              // print('📝 Parsing post: $p'); // avoid extremely noisy logs
+              return Post.fromJson(p);
+            }).toList(),
+            'total_count': data['total_count'],
+          };
+        } catch (e) {
+          print('❌ Feed JSON decode error: $e');
+          print('Response body: ${response.body}');
+          return {'error': 'Failed to decode feed response: $e - ${response.body}'};
+        }
       } else {
         print('❌ Feed API Error: ${response.statusCode}');
-        print('Response: ${response.body}');
-        return {'error': 'Failed to fetch feed: ${response.statusCode}'};
+        print('Response body: ${response.body}');
+        return {'error': 'Failed to fetch feed: ${response.statusCode} - ${response.body}'};
       }
     } catch (e) {
       print('❌ Feed Exception: $e');
@@ -166,13 +172,21 @@ class PostService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return {
-          'posts': (data['posts'] as List).map((p) => Post.fromJson(p)).toList(),
-          'total_count': data['total_count'],
-        };
+        try {
+          final data = jsonDecode(response.body);
+          return {
+            'posts': (data['posts'] as List).map((p) => Post.fromJson(p)).toList(),
+            'total_count': data['total_count'],
+          };
+        } catch (e) {
+          print('❌ MyPosts JSON decode error: $e');
+          print('Response body: ${response.body}');
+          return {'error': 'Failed to decode user posts response: $e - ${response.body}'};
+        }
       } else {
-        return {'error': 'Failed to fetch user posts'};
+        print('❌ MyPosts API Error: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        return {'error': 'Failed to fetch user posts: ${response.statusCode} - ${response.body}'};
       }
     } catch (e) {
       return {'error': e.toString()};

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+import traceback
 from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.services.auth import get_current_user
@@ -93,16 +94,24 @@ def get_feed(
     db: Session = Depends(get_db)
 ):
     """Get feed posts"""
-    user_id = current_user.get("id")
-    posts, total_count = PostService.get_feed(user_id, limit, offset, db)
-    
-    # Format posts with engagement status
-    posts_data = [format_post(post, user_id, db) for post in posts]
-    
-    return {
-        "posts": posts_data,
-        "total_count": total_count
-    }
+    try:
+        user_id = current_user.get("id")
+        posts, total_count = PostService.get_feed(user_id, limit, offset, db)
+
+        # Format posts with engagement status
+        posts_data = [format_post(post, user_id, db) for post in posts]
+
+        return {
+            "posts": posts_data,
+            "total_count": total_count
+        }
+    except Exception as e:
+        tb = traceback.format_exc()
+        # Include traceback in the error detail to aid debugging during development
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"{str(e)}\n\nTraceback:\n{tb}"
+        )
 
 @router.get("/my-posts")
 def get_my_posts(

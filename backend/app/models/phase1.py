@@ -25,7 +25,7 @@ def receive_pdf(file_path: str) -> Path:
 # ─────────────────────────────
 def extract_text(pdf_path: Path) -> str:
     text = ""
-    with pdfplumber.open(pdf_path) as pdf:
+    with pdfplumber.open(pdf_path) as pdf: #with to close file automatically
         for page in pdf.pages:
             page_text = page.extract_text()
             if page_text:
@@ -62,11 +62,11 @@ def get_section(text: str, start_keywords: list[str], end_keywords: list[str]) -
         clean = line.strip()
         upper = clean.upper()
 
-        if upper in start_keywords:
+        if upper in start_keywords: # Text of same section
             collecting = True
             continue
 
-        if collecting and upper in end_keywords:
+        if collecting and upper in end_keywords: # Entering different section
             break
 
         if collecting and clean:
@@ -140,13 +140,6 @@ def generate_cv_warnings(features: dict) -> list[str]:
     return warnings
 
 # ── SKILL LIST ────────────────────────────────────────────────────────────────
-# FIX 1: Added missing skills that appear in Nourhan's CV:
-#   - "generative ai"  (Eva Pharma internship + IBM track)
-#   - "multi-agent"    (IBM Financial Advisor project)
-#   - "prompt engineering" was already present ✓
-#   - "github"         (listed in header + skills section) — added so alias works
-#   - "agile", "scrum" — common QA skills
-#   - "data structure" — listed explicitly in her skills section
 # ──────────────────────────────────────────────────────────────────────────────
 KNOWN_SKILLS = [
     # Programming languages
@@ -182,6 +175,7 @@ COURSEWORK_SKILL_MAP = {
     "distributed systems":  "linux",
 }
 
+# Compare the whole cv with the mapping of coursework
 def extract_from_coursework(text: str) -> list[str]:
     found = []
     text_lower = text.lower()
@@ -220,11 +214,10 @@ def extract_experience_years(text: str) -> float:
 
 
 def extract_internship_count(text: str) -> int:
-    seen_lines = set()
+    seen_lines = set() # set avoid same internship duplicate
     count = 0
 
     # Pattern 1: MM/YYYY date range lines — each = one position
-    # This is the most reliable signal
     pattern_dated = re.compile(
         r"^\S.{2,}\s+\d{1,2}/\d{4}\s*[\-\u2013\u2014]+", re.MULTILINE
     )
@@ -235,7 +228,6 @@ def extract_internship_count(text: str) -> int:
             count += 1
 
     # Pattern 2: only for unstructured CVs — text-based mention
-    # ONLY runs if Pattern 1 found nothing (avoids double counting)
     if count == 0:
         pattern_text = re.compile(
             r"(completed|finished|did|undertook|joined|worked).{0,30}"
@@ -249,7 +241,6 @@ def extract_internship_count(text: str) -> int:
                 count += 1
 
     # Pattern 3: ONLY runs if both above found nothing
-    # catches edge cases like "AI track" headers with no dates
     if count == 0:
         pattern_keyword = re.compile(
             r"\b(internship|training\s+program|summer\s+program|ai\s+track|data\s+track)\b",
@@ -314,7 +305,7 @@ def extract_education(text: str) -> list:
 
         years_on_inst_line = YEAR_RE.findall(stripped)
         if years_on_inst_line:
-            entry["year"] = years_on_inst_line[-1]
+            entry["year"] = years_on_inst_line[-1] # take last year only
 
         for j in range(i + 1, min(i + 6, len(lines))):
             nearby = lines[j].strip()
@@ -347,28 +338,28 @@ def extract_projects(projects_text: str) -> list:
     for i, line in enumerate(lines):
         line_low = line.lower()
 
-        if len(line) < 5:
+        if len(line) < 5: #Too short to be a project name
             continue
 
-        if line.endswith(")") and "(" not in line:
+        if line.endswith(")") and "(" not in line: #weird case of brackets Project name)
             continue
 
-        if re.match(r"^[A-Za-z#/\s\+]+:$", line):
+        if re.match(r"^[A-Za-z#/\s\+]+:$", line): #Remove headers or titles have at the end :
             continue
 
-        if len(line) > 65:
+        if len(line) > 65: #Too long to be a project name, likely description or experience entry
             continue
 
-        if line.endswith("."):
+        if line.endswith("."): #Project names usually don't end with a period, likely description
             continue
 
-        if any(word in line_low for word in bad_keywords):
+        if any(word in line_low for word in bad_keywords): # Any word from bad words
             continue
 
-        if line_low in ["projects", "description"]:
+        if line_low in ["projects", "description"]: # The words are project or description alone, likely section headers or misformatted text
             continue
 
-        if len(line.split()) > 7:
+        if len(line.split()) > 7: # Too many words, likely a description or experience entry rather than a project name
             continue
 
         projects.append(line)
@@ -388,14 +379,14 @@ def extract_location(text: str, doc) -> str:
         "advanced", "data science", "machine learning",
         "linkedin", "github", "http", "www",  # ADDED
     ]
-    # 1️⃣ Try structured location (City, Country)
+    #  Try structured location (City, Country)
     m = re.search(r"([A-Z][a-z]+(?: [A-Z][a-z]+)?,\s*(?:New\s)?[A-Z][a-z]+)", text)
     if m:
         candidate = m.group(1).strip()
         if not any(bad in candidate.lower() for bad in LOCATION_BLACKLIST):
             return candidate
 
-    # 2️⃣ spaCy entities (with filtering)
+    # spaCy entities (with filtering)
     for ent in doc.ents:
         if ent.label_ == "GPE":
             candidate = ent.text.strip().lower()

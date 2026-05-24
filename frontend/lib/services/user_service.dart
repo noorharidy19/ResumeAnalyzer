@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class UserService {
-  static const String baseUrl = 'http://localhost:8001/api';
+  static const String baseUrl = 'http://10.0.2.2:8001/api';
 
   static Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -37,6 +37,34 @@ class UserService {
         return jsonDecode(responseBody);
       } else {
         return {'error': 'Failed to upload profile picture'};
+      }
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
+
+  // Delete profile picture
+  static Future<Map<String, dynamic>> deleteProfilePicture() async {
+    try {
+      final token = await _getToken();
+      if (token == null) throw Exception('Not authenticated');
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/users/profile-picture'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        try {
+          final body = jsonDecode(response.body);
+          return {'error': body['detail'] ?? body};
+        } catch (_) {
+          return {'error': 'Failed to delete profile picture: ${response.statusCode} - ${response.body}'};
+        }
       }
     } catch (e) {
       return {'error': e.toString()};
@@ -91,7 +119,13 @@ class UserService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        return {'error': 'Failed to update profile'};
+        // Try to include server-provided detail if available
+        try {
+          final body = jsonDecode(response.body);
+          return {'error': body['detail'] ?? body};
+        } catch (_) {
+          return {'error': 'Failed to update profile: ${response.statusCode} - ${response.body}'};
+        }
       }
     } catch (e) {
       return {'error': e.toString()};

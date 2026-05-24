@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/user_service.dart';
+import 'profile_picture_viewer.dart';
 import '../../utils/responsive_helper.dart';
 
 class MyProfileScreen extends StatefulWidget {
@@ -173,7 +174,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   image: profilePictureUrl != null && profilePictureUrl!.isNotEmpty
                       ? DecorationImage(
                           image: NetworkImage(
-                            'http://localhost:8001/${profilePictureUrl!.replaceAll(r'\', '/')}',
+                            'http://10.0.2.2:8001/${profilePictureUrl!.replaceAll(r'\', '/')}',
                           ),
                           fit: BoxFit.cover,
                         )
@@ -186,6 +187,28 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                         color: primary,
                       )
                     : null,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  // open picture viewer dialog
+                  await showDialog(
+                    context: context,
+                    builder: (_) => ProfilePictureViewer(
+                      profilePictureUrl: profilePictureUrl ?? '',
+                      userName: userName ?? '',
+                      userEmail: userEmail ?? '',
+                      onPictureUpdated: () async {
+                        await _loadUserProfile();
+                      },
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Change Picture'),
+                style: ElevatedButton.styleFrom(backgroundColor: primary),
               ),
             ),
             SizedBox(height: isMobile ? 20 : 30),

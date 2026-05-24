@@ -12,8 +12,8 @@ class ResumeUploadScreen extends StatefulWidget {
 }
 
 class _ResumeUploadScreenState extends State<ResumeUploadScreen> {
-  String? _fileName;
-  List<int>? _fileBytes;
+  String? _fileName; // name of the selected file
+  List<int>? _fileBytes; // bytes of the selected file (to send to backend in bytes)
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -23,7 +23,7 @@ class _ResumeUploadScreenState extends State<ResumeUploadScreen> {
       FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
-        withData: true,
+        withData: true, //convert to bytes directly
       );
 
       print('File picker result: $result');
@@ -74,7 +74,7 @@ class _ResumeUploadScreenState extends State<ResumeUploadScreen> {
       _errorMessage = null;
     });
 
-    try {
+    try { //send file bytes to backend and get analysis result
       final result = await ResumeAnalyzerService.analyzeResume(
         _fileBytes!,
         _fileName!,
@@ -84,7 +84,7 @@ class _ResumeUploadScreenState extends State<ResumeUploadScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ResumeAnalysisScreen(analysisData: result),
+            builder: (context) => ResumeAnalysisScreen(analysisData: result), //second screen to show analysis result
           ),
         );
       }

@@ -12,7 +12,7 @@ def signup_user(data, db):
     existing_user = db.query(User).filter(User.email == data.email).first()
 
     if existing_user:
-        return None  # 👈 مهم
+        return None 
 
     hashed = hashlib.sha256(data.password.encode()).hexdigest()
 

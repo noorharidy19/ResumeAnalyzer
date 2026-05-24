@@ -48,12 +48,27 @@ class _FeedScreenState extends State<FeedScreen> {
       });
       
       if (result.containsKey('error')) {
+        final err = result['error'];
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading ${selectedTab == 0 ? "feed" : "posts"}: ${result['error']}'),
+            content: Text('Error loading ${selectedTab == 0 ? "feed" : "posts"}: $err'),
             backgroundColor: Colors.red,
           ),
         );
+
+        // Show debug dialog for detailed server error (helpful for diagnosing 500s)
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Feed error'),
+              content: SingleChildScrollView(child: Text(err.toString())),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Close')),
+              ],
+            ),
+          );
+        }
       } else {
         setState(() {
           posts = result['posts'] ?? [];

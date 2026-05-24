@@ -1,7 +1,6 @@
 """
 Phase 2 — Job Matching & Recommendations
 ==========================================
-Fixed version — see review comments inline (marked FIX)
 """  
 from __future__ import annotations
 import re
@@ -217,8 +216,6 @@ JOB_DB = [
 
 
 # ── LEARNING_MAP ─────────────────────────────────────────────────────────────
-# Single source of truth for learning resources.
-# Each entry now includes a "url" field used by Phase 3 PDF report.
 # ─────────────────────────────────────────────────────────────────────────────
 LEARNING_MAP = {
     "git": {
@@ -388,7 +385,7 @@ class HybridMatchingEngine:
 
         # TF-IDF
         self.tfidf = TfidfVectorizer(ngram_range=(1, 2), min_df=1)
-        self.tfidf_matrix = self.tfidf.fit_transform(self.job_texts)
+        self.tfidf_matrix = self.tfidf.fit_transform(self.job_texts) # convert all jpb description to vector numbers
 
         # Sentence Transformers
         self.use_st = use_st and _ST_AVAILABLE
@@ -443,12 +440,14 @@ class HybridMatchingEngine:
         )
 
         return combined[:top_k]
-    
+
+# Skill aliases for normalization
 SKILL_ALIASES = {
     "github": "git",
     "node.js": "nodejs",
 }
 
+# Skill inference rules: if candidate has skill X, we can infer they likely have related skill Y
 SKILL_INFERENCE = {
     "yolo":             ["computer vision", "opencv"],
     "image processing": ["computer vision", "opencv"],
@@ -570,7 +569,7 @@ def build_recommendations(matches: list[dict], candidate_skills: list[str]) -> l
             "url":      f"https://www.youtube.com/results?search_query={skill.replace(' ', '+')}+tutorial",
             "hours":    10,
         })
-        # FIX 3: cleaner calculation — each required hit = 1 job, preferred = 0.5 job
+
         needed = math.ceil(freq / 2)
         recs.append({
             "skill":          skill,
@@ -593,11 +592,11 @@ def detect_career_level(phase1: dict) -> str:
 
     # strong junior first (priority condition)
     if exp >= 1 or internships >= 2 or projs >= 5:
-        return "Junior (Strong)"   # MODIFIED
+        return "Junior (Strong)"  
 
     # junior condition
     if exp > 0 or internships == 1 or projs >= 3 or (gpa and gpa >= 3.5):
-        return "Junior"   # MODIFIED
+        return "Junior"   
 
     # mid-level only if real experience
     if exp >= 3:
