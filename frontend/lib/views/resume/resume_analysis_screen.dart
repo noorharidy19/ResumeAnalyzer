@@ -40,6 +40,9 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
     final phase2 = widget.analysisData['phase2'] as Map<String, dynamic>? ?? {};
     final phase3 = widget.analysisData['phase3'] as Map<String, dynamic>? ?? {};
 
+    // analysis_id comes back from backend as a string like "analysis_20250524_143022"
+    final analysisId = widget.analysisData['analysis_id'] as String? ?? '';
+
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
@@ -68,6 +71,7 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
                   _buildTabButton(2, 'Learning Path', primary),
                   _buildTabButton(3, 'Interview Q&A', primary),
                   _buildTabButton(4, 'Career Path', primary),
+                  _buildTabButton(5, '✨ Enhance CV', primary),
                 ],
               ),
             ),
@@ -89,6 +93,8 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
                 LearningRoadmapScreen(phase2: phase2, phase3: phase3),
                 InterviewQuestionsScreen(phase3: phase3),
                 CareerPathScreen(phase3: phase3),
+                // Tab 5: CV Enhancement — loads inline, polls until Phase 4 is ready
+                CVEnhancementScreen(analysisId: analysisId),
               ],
             ),
           ),
@@ -176,18 +182,15 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
           phase1['projects'] as List<dynamic>? ?? [],
           primary,
         ),
+
         const SizedBox(height: 12),
 
         ElevatedButton.icon(
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => CVEnhancementScreen(
-                  analysisId: widget.analysisData['id'] as int? ?? 0,
-                  targetJob: null,
-                ),
-              ),
+            _pageController.animateToPage(
+              5,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
             );
           },
           icon: const Icon(Icons.auto_fix_high),
