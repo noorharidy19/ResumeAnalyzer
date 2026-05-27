@@ -2,6 +2,8 @@ import json
 import os
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
+from app.services.cv_enhancement import generate_pdf
+from app.services.cv_enhancement import enhance_cv
 
 router = APIRouter(tags=["CV Enhancement"])
 
@@ -28,7 +30,7 @@ def trigger_enhancement(analysis_id: str, target_job: str | None = None):
     Synchronously run Phase 4 for a past analysis (re-run from history).
     Reads the existing analysis JSON, runs Phase 4, saves result.
     """
-    from app.services.cv_enhancement import enhance_cv
+    
 
     analysis_path = os.path.join(UPLOAD_DIR, f"{analysis_id}.json")
     if not os.path.exists(analysis_path):
@@ -65,7 +67,7 @@ def export_pdf(analysis_id: str):
 
     # Only regenerate if it doesn't already exist
     if not os.path.exists(filepath):
-        from app.services.cv_enhancement import generate_pdf
+        
         generate_pdf(data["phase4"], filepath)
 
     return FileResponse(
