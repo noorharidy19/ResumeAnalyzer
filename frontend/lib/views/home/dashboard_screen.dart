@@ -13,7 +13,7 @@ import '../profile/profile_picture_viewer.dart';
 import '../profile/my_profile_screen.dart';
 import '../../services/message_service.dart';
 import '../../services/notification_service.dart';
-
+import '../cv_enhancement/cv_enhancement_screen.dart';
 import '../../utils/responsive_helper.dart';
 import '../../core/providers.dart';
 

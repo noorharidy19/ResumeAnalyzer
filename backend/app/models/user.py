@@ -3,6 +3,7 @@ from app.db.database import Base
 import enum
 import uuid
 from app.models.enum import UserRole
+from sqlalchemy.orm import relationship
 # 🔥 ENUM
 
 class User(Base):
@@ -22,3 +23,5 @@ class User(Base):
     password = Column(String, nullable=False)
 
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
+    
+    cv_enhancements = relationship("CVEnhancement", back_populates="user", cascade="all, delete-orphan")

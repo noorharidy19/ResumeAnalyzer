@@ -3,15 +3,13 @@ import 'job_matches_screen.dart';
 import 'learning_roadmap_screen.dart';
 import 'interview_questions_screen.dart';
 import 'career_path_screen.dart';
+import '../cv_enhancement/cv_enhancement_screen.dart';
 
 class ResumeAnalysisScreen extends StatefulWidget {
   // json response from backend after analyzing resume, contains all data for different phases
   final Map<String, dynamic> analysisData;
 
-  const ResumeAnalysisScreen({
-    required this.analysisData,
-    super.key,
-  });
+  const ResumeAnalysisScreen({required this.analysisData, super.key});
 
   @override
   State<ResumeAnalysisScreen> createState() => _ResumeAnalysisScreenState();
@@ -88,16 +86,9 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
                   phase2: phase2,
                   analysisData: widget.analysisData,
                 ),
-                LearningRoadmapScreen(
-                  phase2: phase2,
-                  phase3: phase3,
-                ),
-                InterviewQuestionsScreen(
-                  phase3: phase3,
-                ),
-                CareerPathScreen(
-                  phase3: phase3,
-                ),
+                LearningRoadmapScreen(phase2: phase2, phase3: phase3),
+                InterviewQuestionsScreen(phase3: phase3),
+                CareerPathScreen(phase3: phase3),
               ],
             ),
           ),
@@ -148,18 +139,14 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         // Personal Info
-        _buildSectionCard(
-          'Personal Information',
-          primary,
-          [
-            _buildInfoRow('Name', phase1['name'] ?? 'Not detected'),
-            _buildInfoRow('Email', phase1['email'] ?? 'Not detected'),
-            _buildInfoRow('Phone', phase1['phone'] ?? 'Not detected'),
-            _buildInfoRow('Location', phase1['location'] ?? 'Not detected'),
-            if (phase1['github'] != null)
-              _buildInfoRow('GitHub', phase1['github']),
-          ],
-        ),
+        _buildSectionCard('Personal Information', primary, [
+          _buildInfoRow('Name', phase1['name'] ?? 'Not detected'),
+          _buildInfoRow('Email', phase1['email'] ?? 'Not detected'),
+          _buildInfoRow('Phone', phase1['phone'] ?? 'Not detected'),
+          _buildInfoRow('Location', phase1['location'] ?? 'Not detected'),
+          if (phase1['github'] != null)
+            _buildInfoRow('GitHub', phase1['github']),
+        ]),
         const SizedBox(height: 12),
         // Skills
         _buildSkillsCard(
@@ -189,15 +176,28 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
           phase1['projects'] as List<dynamic>? ?? [],
           primary,
         ),
+        const SizedBox(height: 12),
+
+        ElevatedButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CVEnhancementScreen(
+                  analysisId: widget.analysisData['id'] as int? ?? 0,
+                  targetJob: null,
+                ),
+              ),
+            );
+          },
+          icon: const Icon(Icons.auto_fix_high),
+          label: const Text('Enhance CV'),
+        ),
       ],
     );
   }
 
-  Widget _buildSectionCard(
-    String title,
-    Color primary,
-    List<Widget> children,
-  ) {
+  Widget _buildSectionCard(String title, Color primary, List<Widget> children) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -242,10 +242,7 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
           Expanded(
             child: Text(
               value ?? 'N/A',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -253,11 +250,7 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
     );
   }
 
-  Widget _buildSkillsCard(
-    String title,
-    List<dynamic> skills,
-    Color primary,
-  ) {
+  Widget _buildSkillsCard(String title, List<dynamic> skills, Color primary) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -282,11 +275,13 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: skills
-                    .map((skill) => Chip(
-                          label: Text(skill.toString()),
-                          backgroundColor: primary.withOpacity(0.1),
-                          labelStyle: TextStyle(color: primary),
-                        ))
+                    .map(
+                      (skill) => Chip(
+                        label: Text(skill.toString()),
+                        backgroundColor: primary.withOpacity(0.1),
+                        labelStyle: TextStyle(color: primary),
+                      ),
+                    )
                     .toList(),
               ),
           ],
@@ -363,13 +358,7 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         ],
       ),
     );
@@ -402,33 +391,37 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
             else
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: education
-                    .map((edu) {
-                      final eduMap = edu as Map<String, dynamic>;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              eduMap['institution'] ?? 'Unknown',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            if (eduMap['degree'] != null)
-                              Text(
-                                eduMap['degree'],
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
-                              ),
-                            if (eduMap['year'] != null)
-                              Text(
-                                '${eduMap['year']}',
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
-                              ),
-                          ],
+                children: education.map((edu) {
+                  final eduMap = edu as Map<String, dynamic>;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          eduMap['institution'] ?? 'Unknown',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                      );
-                    })
-                    .toList(),
+                        if (eduMap['degree'] != null)
+                          Text(
+                            eduMap['degree'],
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        if (eduMap['year'] != null)
+                          Text(
+                            '${eduMap['year']}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }).toList(),
               ),
           ],
         ),
@@ -463,22 +456,21 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
             else
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: projects
-                    .map((project) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
-                            Expanded(
-                              child: Text(project.toString()),
-                            ),
-                          ],
+                children: projects.map((project) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '• ',
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                      );
-                    })
-                    .toList(),
+                        Expanded(child: Text(project.toString())),
+                      ],
+                    ),
+                  );
+                }).toList(),
               ),
           ],
         ),
