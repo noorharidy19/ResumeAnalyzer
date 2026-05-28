@@ -1,32 +1,36 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'signup_screen.dart';
 import '../home/dashboard_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../utils/responsive_helper.dart';
-class LoginScreen extends StatefulWidget {
+import '../../providers/app_providers.dart';
+
+// ── Changed: StatefulWidget → ConsumerStatefulWidget ──
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+// ── Changed: State → ConsumerState (gives access to ref) ──
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final primary = const Color(0xFF5C6BC0);
-  final accent = const Color(0xFF3F51B5);
+  final accent  = const Color(0xFF3F51B5);
 
-  final _formKey = GlobalKey<FormState>();
-
-  final emailController = TextEditingController();
+  final _formKey          = GlobalKey<FormState>();
+  final emailController    = TextEditingController();
   final passwordController = TextEditingController();
 
-  bool isLoading = false;
+  // ── REMOVED: bool isLoading — now lives in isLoadingProvider ──
 
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => isLoading = true);
+    // ── Changed: setState → ref.read (callback, not build) ──
+    ref.read(isLoadingProvider.notifier).state = true;
 
     final url = Uri.parse("http://10.0.2.2:8001/auth/login");
 
@@ -35,43 +39,52 @@ class _LoginScreenState extends State<LoginScreen> {
         url,
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "email": emailController.text.trim(),
+          "email":    emailController.text.trim(),
           "password": passwordController.text.trim(),
         }),
       );
 
-      setState(() => isLoading = false);
+      ref.read(isLoadingProvider.notifier).state = false;
+
+      // ── FIX: check mounted after every await before touching context ──
+      if (!mounted) return;
 
       final data = jsonDecode(response.body);
-      print("📤 Backend Response: $data"); // DEBUG
 
       if (response.statusCode == 200) {
+        final user = data['user'] as Map<String, dynamic>?;
+
+        // ── NEW: store user in Riverpod so all screens see it instantly ──
+        ref.read(authProvider.notifier).login(
+          token:          data['access_token'] ?? '',
+          userName:       user?['name']            ?? '',
+          userEmail:      user?['email']           ?? '',
+          profilePicture: user?['profile_picture'],
+        );
+
+        // Still save to SharedPreferences so session survives app restart
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          if (!mounted) return; // ── FIX: check after every await ──
+          if (data['access_token'] != null) {
+            await prefs.setString('access_token', data['access_token']);
+          }
+          if (user?['email']           != null) await prefs.setString('user_email',      user!['email']);
+          if (user?['name']            != null) await prefs.setString('user_name',       user!['name']);
+          if (user?['profile_picture'] != null) await prefs.setString('profile_picture', user!['profile_picture']);
+        } catch (e) {
+          debugPrint("Error saving prefs: $e");
+        }
+
+        if (!mounted) return; // ── FIX: check before Navigator and SnackBar ──
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Login successful ✅"),
+          const SnackBar(
+            content: Text("Login successful ✅"),
             backgroundColor: Colors.green,
           ),
         );
 
-        // Save token and user email to SharedPreferences (session)
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          if (data['access_token'] != null) {
-            await prefs.setString('access_token', data['access_token']);
-          }
-          final user = data['user'] as Map<String, dynamic>?;
-          final email = user != null ? user['email'] as String? : null;
-          final name = user != null ? user['name'] as String? : null;
-          final profilePicture = user != null ? user['profile_picture'] as String? : null;
-          print("👤 Extracted Name: $name, Email: $email, Profile: $profilePicture"); // DEBUG
-          if (email != null) await prefs.setString('user_email', email);
-          if (name != null) await prefs.setString('user_name', name);
-          if (profilePicture != null) await prefs.setString('profile_picture', profilePicture);
-        } catch (e) {
-          print("❌ Error saving prefs: $e"); // DEBUG
-        }
-
-        // 🔥 Navigate to dashboard
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const DashboardScreen()),
@@ -85,7 +98,9 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
-      setState(() => isLoading = false);
+      ref.read(isLoadingProvider.notifier).state = false;
+
+      if (!mounted) return; // ── FIX ──
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -98,6 +113,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ── NEW: ref.watch in build — rebuilds button when isLoading changes ──
+    final isLoading = ref.watch(isLoadingProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7FF),
       appBar: AppBar(
@@ -119,19 +137,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(24),
-
                 child: Form(
                   key: _formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-
-                      // TITLE
                       Row(
                         children: [
                           CircleAvatar(
                             radius: 28,
-                            backgroundColor: primary.withOpacity(0.1),
+                            // ── FIX: withOpacity → withValues ──
+                            backgroundColor: primary.withValues(alpha: 0.1),
                             child: Icon(Icons.person, color: primary),
                           ),
                           const SizedBox(width: 12),
@@ -152,16 +168,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: 20),
 
-                      // EMAIL
                       TextFormField(
                         controller: emailController,
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Email required";
-                          }
-                          if (!value.contains("@")) {
-                            return "Invalid email";
-                          }
+                          if (value == null || value.isEmpty) return "Email required";
+                          if (!value.contains("@")) return "Invalid email";
                           return null;
                         },
                         decoration: inputStyle("Email", Icons.email),
@@ -169,14 +180,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: 12),
 
-                      // PASSWORD
                       TextFormField(
                         controller: passwordController,
                         obscureText: true,
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Password required";
-                          }
+                          if (value == null || value.isEmpty) return "Password required";
                           return null;
                         },
                         decoration: inputStyle("Password", Icons.lock),
@@ -184,7 +192,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       const SizedBox(height: 20),
 
-                      // BUTTON
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -200,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               : const Text(
                                   "Login",
                                   style: TextStyle(
-                                    color: Colors.white, // 👈 أبيض
+                                    color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                   ),
