@@ -1,74 +1,98 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'login_screen.dart';
-import '../../utils/responsive_helper.dart';
+import '../../providers/app_providers.dart';
 
-class SignupScreen extends StatefulWidget {
+// ── Changed: StatefulWidget → ConsumerStatefulWidget ──
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+// ── Changed: State → ConsumerState ──
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final name = TextEditingController();
-  final email = TextEditingController();
-  final phone = TextEditingController();
+  final name     = TextEditingController();
+  final email    = TextEditingController();
+  final phone    = TextEditingController();
   final password = TextEditingController();
 
-  bool isLoading = false;
+  final primary = const Color(0xFF5C6BC0);
+  final accent  = const Color(0xFF3F51B5);
+
+  // ── REMOVED: bool isLoading — now lives in isLoadingProvider ──
 
   Future<void> signup() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => isLoading = true);
+    // ── Changed: setState → ref.read ──
+    ref.read(isLoadingProvider.notifier).state = true;
 
-    final res = await http.post(
-      Uri.parse("http://10.0.2.2:8001/auth/signup"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "name": name.text.trim(),
-        "email": email.text.trim(),
-        "phone_number": phone.text.trim(),
-        "password": password.text.trim(),
-      }),
-    );
+    try {
+      final res = await http.post(
+        Uri.parse("http://10.0.2.2:8001/auth/signup"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "name":         name.text.trim(),
+          "email":        email.text.trim(),
+          "phone_number": phone.text.trim(),
+          "password":     password.text.trim(),
+        }),
+      );
 
-    setState(() => isLoading = false);
+      ref.read(isLoadingProvider.notifier).state = false;
 
-    final data = jsonDecode(res.body);
+      // ── FIX: check mounted after every await before touching context ──
+      if (!mounted) return;
 
-    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+
+      if (res.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Account created successfully ✅"),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        if (!mounted) return; // ── FIX: check before Navigator ──
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(data['detail'] ?? "Signup failed ❌"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ref.read(isLoadingProvider.notifier).state = false;
+
+      if (!mounted) return; // ── FIX ──
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Account created successfully ✅"),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(data['detail'] ?? "Signup failed ❌"),
+          content: Text("Connection Error ❌"),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  final primary = const Color(0xFF5C6BC0);
-  final accent = const Color(0xFF3F51B5);
-
   @override
   Widget build(BuildContext context) {
+    // ── NEW: ref.watch in build ──
+    final isLoading = ref.watch(isLoadingProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7FF),
       body: Center(
@@ -88,13 +112,12 @@ class _SignupScreenState extends State<SignupScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-
-                      // HEADER
                       Row(
                         children: [
                           CircleAvatar(
                             radius: 28,
-                            backgroundColor: primary.withOpacity(0.1),
+                            // ── FIX: withOpacity → withValues ──
+                            backgroundColor: primary.withValues(alpha: 0.1),
                             child: Icon(Icons.person_add, color: primary),
                           ),
                           const SizedBox(width: 12),
@@ -120,7 +143,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       const SizedBox(height: 20),
 
-                      // NAME
                       TextFormField(
                         controller: name,
                         validator: (v) =>
@@ -130,7 +152,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       const SizedBox(height: 12),
 
-                      // EMAIL
                       TextFormField(
                         controller: email,
                         validator: (v) {
@@ -143,7 +164,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       const SizedBox(height: 12),
 
-                      // PHONE
                       TextFormField(
                         controller: phone,
                         keyboardType: TextInputType.phone,
@@ -154,7 +174,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       const SizedBox(height: 12),
 
-                      // PASSWORD
                       TextFormField(
                         controller: password,
                         obscureText: true,
@@ -168,7 +187,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       const SizedBox(height: 20),
 
-                      // BUTTON
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -181,8 +199,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                           ),
                           child: isLoading
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white)
+                              ? const CircularProgressIndicator(color: Colors.white)
                               : const Text(
                                   "Sign Up",
                                   style: TextStyle(
@@ -199,7 +216,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       TextButton(
                         onPressed: () => Navigator.pop(context),
                         child: const Text("Already have an account? Login"),
-                      )
+                      ),
                     ],
                   ),
                 ),
