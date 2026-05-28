@@ -5,7 +5,7 @@ import 'skill_gap_screen.dart';
 import 'rewritten_cv_tab.dart';
 
 class CVEnhancementScreen extends StatefulWidget {
-  final int analysisId;
+  final String analysisId;
   final String? targetJob;
 
   const CVEnhancementScreen({
@@ -44,15 +44,18 @@ class _CVEnhancementScreenState extends State<CVEnhancementScreen>
   Future<void> _load() async {
     try {
       // First check if already done
-      var result = await _service.getEnhancement(widget.analysisId);
-
+      var result = await _service.getEnhancement(
+        widget.analysisId.toString(),
+      );
       if (result == null) {
         // Trigger and poll
         await _service.enhanceResume(
-          widget.analysisId,
+          widget.analysisId.toString(),
           targetJob: widget.targetJob,
         );
-        result = await _service.pollEnhancement(widget.analysisId);
+        result = await _service.pollEnhancement(
+          widget.analysisId.toString(),
+        );
       }
 
       setState(() {
@@ -70,7 +73,9 @@ class _CVEnhancementScreenState extends State<CVEnhancementScreen>
   Future<void> _downloadPDF() async {
     setState(() => _downloading = true);
     try {
-      final file = await _service.downloadPDF(widget.analysisId);
+      final file = await _service.downloadPDF(
+        widget.analysisId.toString(),
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

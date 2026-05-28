@@ -9,7 +9,7 @@ class CVEnhancement(Base):
     __tablename__ = "cv_enhancements"
 
     id = Column(Integer, primary_key=True, index=True)
-    analysis_id = Column(Integer, ForeignKey("resume_analyses.id", ondelete="CASCADE"), nullable=False, index=True)
+    analysis_id = Column(String, nullable=False, index=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     target_job = Column(String(255), nullable=True)       # Optional override; NULL = inferred by AI
     phase4_json = Column(Text, nullable=False)            # Full Phase 4 JSON stored as text
