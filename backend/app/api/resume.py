@@ -9,6 +9,9 @@ from fastapi.responses import FileResponse
 import os
 import json
 import tempfile
+from app.utils.auth_utils import get_current_user
+from app.models.user import User
+from fastapi import Depends
 import traceback
 from pathlib import Path
 from typing import Optional
@@ -42,7 +45,8 @@ async def analyze_resume(
     file: UploadFile = File(...),
     top_k: Optional[int] = 3,
     use_external_jobs: Optional[bool] = True,
-    location: Optional[str] = "Egypt"
+    location: Optional[str] = "Egypt",
+    current_user: User = Depends(get_current_user),
 ):
     """
     Upload a PDF resume and get complete analysis (Phase 1, 2, 3)
@@ -117,6 +121,7 @@ async def analyze_resume(
             analysis_id=analysis_id,
             phase1_data=phase1_result,
             phase2_data=phase2_result,
+            user_id=str(current_user.id),
         )
 
         return ResumeAnalysisResponse(

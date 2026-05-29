@@ -169,7 +169,7 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
                 child: Stack(
                   children: [
                     Image.network(
-                      'http://localhost:8001/${currentImageUrl}',
+                      'http://192.168.1.5:8001/${currentImageUrl}',
                       width: imgSize,
                       height: imgSize,
                       fit: BoxFit.cover,

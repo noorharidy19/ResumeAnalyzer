@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class ConnectionService {
-  static const String baseUrl = 'http://10.0.2.2:8001/api'; // Updated to port 8001 
+  static const String baseUrl = 'http://192.168.1.5:8001/api'; // Updated to port 8001 
   static Future<String?> _getToken() async {    final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
   }

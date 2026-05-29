@@ -72,6 +72,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(profilePicture: path);
   }
 
+  void updateName(String name) {
+    state = state.copyWith(userName: name);
+  }
+
+  void clearProfilePicture() {
+    state = state.copyWith(profilePicture: '');
+  }
+
   // Called on app start to restore session from SharedPreferences
   void restoreSession({
     required String token,

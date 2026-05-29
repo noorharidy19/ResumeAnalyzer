@@ -47,13 +47,13 @@ def enhance_cv(
     phase1_data: dict,
     phase2_data: dict,
     target_job: str | None = None,
+    user_id: str | None = None,
 ) -> dict:
-    """
-    Run Phase 4 and save the result as a JSON sidecar file next to the analysis.
-    Saved to: uploads/resumes/{analysis_id}_enhancement.json
-    """
     from app.models.phase4 import run_phase4
+    from app.db.database import SessionLocal
     import json, os
+
+    print(f"[CV Enhancement] Starting for analysis_id={analysis_id}, user_id={user_id}")  # ✅ debug
 
     phase4_result = run_phase4(phase1_data, phase2_data, target_job)
 
@@ -63,11 +63,33 @@ def enhance_cv(
         "phase4": phase4_result,
     }
 
+    # Save JSON sidecar
     output_path = os.path.join("uploads/resumes", f"{analysis_id}_enhancement.json")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
+    print(f"[CV Enhancement] Saved JSON to {output_path}")
 
-    print(f"[CV Enhancement] Saved to {output_path}")
+    # ✅ Save to DB — no if guard, always try
+    db = SessionLocal()
+    try:
+        record = CVEnhancement(
+            analysis_id=analysis_id,
+            user_id=user_id,
+            target_job=target_job,
+            phase4_json=json.dumps(phase4_result),
+        )
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+        print(f"[CV Enhancement] ✅ Saved to DB with id={record.id}")
+    except Exception as e:
+        db.rollback()
+        print(f"[CV Enhancement] ❌ DB save failed: {e}")
+        import traceback
+        traceback.print_exc()   # ✅ prints full error so you can see what's wrong
+    finally:
+        db.close()
+
     return output
 
 

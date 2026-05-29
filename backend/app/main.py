@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from app.api import auth, connections, users, messages, posts, notifications, resume
+from app.api import auth, connections, users, messages, posts, notifications, resume, cv_enhancement
 import os
 from app.db.database import Base, engine
 from app.models.user import User
@@ -16,6 +16,7 @@ app.include_router(messages.router)
 app.include_router(posts.router)
 app.include_router(notifications.router)
 app.include_router(resume.router)
+app.include_router(cv_enhancement.router)
 
 # Mount static files for uploads
 if not os.path.exists("uploads"):

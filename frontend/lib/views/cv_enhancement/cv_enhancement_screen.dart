@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/cv_enhancement_service.dart';
 import 'certificates_screen.dart';
-import 'skill_gap_screen.dart';
 import 'rewritten_cv_tab.dart';
 
 class CVEnhancementScreen extends StatefulWidget {
@@ -31,7 +30,7 @@ class _CVEnhancementScreenState extends State<CVEnhancementScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _load();
   }
 
@@ -128,7 +127,6 @@ class _CVEnhancementScreenState extends State<CVEnhancementScreen>
                 tabs: const [
                   Tab(text: 'Rewritten CV'),
                   Tab(text: 'Certificates'),
-                  Tab(text: 'Skill Gaps'),
                 ],
               ),
       ),
@@ -137,57 +135,67 @@ class _CVEnhancementScreenState extends State<CVEnhancementScreen>
   }
 
   Widget _buildBody() {
-    if (_loading) {
-      return const Center(
+  if (_loading) {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 20),
+          Text(
+            'Enhancing your CV with AI…\nThis may take up to 30 seconds.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  if (_error != null) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 20),
-            Text(
-              'Enhancing your CV with AI…\nThis may take up to 30 seconds.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(_error!, textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () {
+                setState(() { _loading = true; _error = null; });
+                _load();
+              },
+              child: const Text('Retry'),
             ),
           ],
         ),
-      );
-    }
-
-    if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _loading = true;
-                    _error = null;
-                  });
-                  _load();
-                },
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return TabBarView(
-      controller: _tabController,
-      children: [
-        RewrittenCVTab(data: _data!['rewritten_sections']),
-        CertificatesScreen(certificates: List<Map<String, dynamic>>.from(_data!['certificates'])),
-        SkillGapScreen(skillGaps: List<Map<String, dynamic>>.from(_data!['skill_gaps'])),
-      ],
+      ),
     );
   }
+
+  // ✅ Handle both flat and nested { phase4: {...} } structures
+  final phase4 = (_data!['phase4'] as Map<String, dynamic>?) ?? _data!;
+
+  final rewrittenSections = phase4['rewritten_sections'] as Map<String, dynamic>?;
+  final certificates     = phase4['certificates']        as List<dynamic>?;
+
+  if (rewrittenSections == null || certificates == null) {
+    return const Center(child: Text('Enhancement data is incomplete. Please retry.'));
+  }
+
+  return TabBarView(
+    controller: _tabController,
+    children: [
+      RewrittenCVTab(data: rewrittenSections),
+      CertificatesScreen(
+        certificates: certificates
+            .map((e) => e as Map<String, dynamic>)
+            .toList(),
+      ),
+    ],
+  );
 }
+    }

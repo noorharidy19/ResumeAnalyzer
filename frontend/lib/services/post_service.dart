@@ -86,7 +86,7 @@ class Post {
 }
 
 class PostService {
-  static const String baseUrl = 'http://10.0.2.2:8001/api';
+  static const String baseUrl = 'http://192.168.1.5:8001/api';
 
   static Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();

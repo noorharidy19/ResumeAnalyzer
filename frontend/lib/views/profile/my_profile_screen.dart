@@ -5,7 +5,9 @@ import 'profile_picture_viewer.dart';
 import '../../utils/responsive_helper.dart';
 
 class MyProfileScreen extends StatefulWidget {
-  const MyProfileScreen({super.key});
+  final void Function(String? newName, String? newPicture)? onProfileUpdated;
+
+  const MyProfileScreen({super.key, this.onProfileUpdated});
 
   @override
   State<MyProfileScreen> createState() => _MyProfileScreenState();
@@ -86,6 +88,8 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_name', nameController.text);
         await prefs.setString('phone_number', phoneController.text);
+
+        widget.onProfileUpdated?.call(nameController.text, null);
 
         setState(() {
           userName = nameController.text;
@@ -174,7 +178,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   image: profilePictureUrl != null && profilePictureUrl!.isNotEmpty
                       ? DecorationImage(
                           image: NetworkImage(
-                            'http://10.0.2.2:8001/${profilePictureUrl!.replaceAll(r'\', '/')}',
+                            'http://192.168.1.5:8001/${profilePictureUrl!.replaceAll(r'\', '/')}',
                           ),
                           fit: BoxFit.cover,
                         )
@@ -202,6 +206,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                       userEmail: userEmail ?? '',
                       onPictureUpdated: () async {
                         await _loadUserProfile();
+                        final prefs = await SharedPreferences.getInstance();
+                        final newPic = prefs.getString('profile_picture');
+                        widget.onProfileUpdated?.call(null, newPic);
                       },
                     ),
                   );

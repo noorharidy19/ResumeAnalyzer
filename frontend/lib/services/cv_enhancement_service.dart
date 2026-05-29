@@ -5,13 +5,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CVEnhancementService {
-  static const String _baseUrl = 'http://localhost:8001';
+  static const String _baseUrl = 'http://192.168.1.5:8001';
 
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
   }
-
+      
   Map<String, String> _authHeaders(String token) => {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',

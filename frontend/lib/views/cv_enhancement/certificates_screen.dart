@@ -120,21 +120,6 @@ class CertificatesScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _openUrl(context, cert['url'] as String? ?? ''),
-                        icon: const Icon(Icons.open_in_new, size: 16),
-                        label: const Text('View Certificate'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: color,
-                          side: BorderSide(color: color.withOpacity(0.5)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
