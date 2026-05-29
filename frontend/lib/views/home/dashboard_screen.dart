@@ -15,7 +15,8 @@ import '../../services/message_service.dart';
 import '../../services/notification_service.dart';
 import '../cv_enhancement/cv_enhancement_screen.dart';
 import '../../utils/responsive_helper.dart';
-import '../../core/providers.dart';
+import '../../core/providers.dart';           // teammate's profileProvider — unchanged
+import '../../providers/app_providers.dart';  // our authProvider + isLoadingProvider
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -25,25 +26,35 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  String? userEmail;
-  String? userName;
-  String? profilePictureUrl;
-  bool isLoggedIn = false;
-  int totalUnreadMessages = 0;
+  // ── REMOVED: String? userEmail, userName, profilePictureUrl, bool isLoggedIn ──
+  // All of that now comes from ref.watch(authProvider) in build()
+
+  // Unread counts stay as local state — they are NOT auth data
+  int totalUnreadMessages      = 0;
   int totalUnreadNotifications = 0;
 
   final Color primary = const Color(0xFF7C8CF8);
-  final Color bg = const Color(0xFFF5F7FF);
+  final Color bg      = const Color(0xFFF5F7FF);
 
   @override
   void initState() {
     super.initState();
-    loadUser();
+    // ── REMOVED: loadUser() — no longer needed, auth comes from authProvider ──
+    // Refresh unread counts once the first frame is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = ref.read(authProvider);
+      if (auth.isLoggedIn) {
+        _refreshUnreadCount();
+        _refreshUnreadNotifications();
+      }
+    });
   }
 
   Future<void> _refreshUnreadCount() async {
-    if (isLoggedIn) {
+    // ── Changed: read isLoggedIn from authProvider ──
+    if (ref.read(authProvider).isLoggedIn) {
       final result = await MessageService.getUnreadCount();
+      if (!mounted) return;
       if (!result.containsKey('error')) {
         setState(() {
           totalUnreadMessages = result['unread_count'] ?? 0;
@@ -53,8 +64,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Future<void> _refreshUnreadNotifications() async {
-    if (isLoggedIn) {
+    if (ref.read(authProvider).isLoggedIn) {
       final result = await NotificationService.getUnreadCount();
+      if (!mounted) return;
       if (!result.containsKey('error')) {
         setState(() {
           totalUnreadNotifications = result['unread_count'] ?? 0;
@@ -63,48 +75,49 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
-  void loadUser() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    setState(() {
-      userEmail = prefs.getString("user_email");
-      userName = prefs.getString("user_name");
-      profilePictureUrl = prefs.getString("profile_picture");
-      isLoggedIn = userEmail != null;
-    });
-    
-    if (isLoggedIn) {
-      await Future.delayed(const Duration(milliseconds: 300));
-      _refreshUnreadCount();
-      _refreshUnreadNotifications();
-    }
-  }
+  // ── REMOVED: loadUser() ──
 
   void requireAuth(VoidCallback callback) {
-    if (isLoggedIn) {
+    // ── Changed: read isLoggedIn from authProvider ──
+    if (ref.read(authProvider).isLoggedIn) {
       callback();
     } else {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
-      ).then((_) => loadUser());
+      );
+      // No .then(loadUser) needed — authProvider updates automatically on login
     }
+  }
+
+  Future<void> _logout() async {
+    // 1. Clear Riverpod auth state
+    ref.read(authProvider.notifier).logout();
+
+    // 2. Clear SharedPreferences so session doesn't restore on next app start
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('access_token');
+    await prefs.remove('user_email');
+    await prefs.remove('user_name');
+    await prefs.remove('profile_picture');
   }
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = ResponsiveHelper.isMobile(context);
-    final isTablet = ResponsiveHelper.isTablet(context);
-    final padding = ResponsiveHelper.getResponsivePadding(context);
+    // ── NEW: ref.watch — rebuilds whenever auth state changes ──
+    final auth = ref.watch(authProvider);
+
+    final isMobile      = ResponsiveHelper.isMobile(context);
+    final isTablet      = ResponsiveHelper.isTablet(context);
+    final padding       = ResponsiveHelper.getResponsivePadding(context);
     final titleFontSize = ResponsiveHelper.getResponsiveFontSize(
       context,
-      mobileSize: 20,
-      tabletSize: 24,
+      mobileSize:  20,
+      tabletSize:  24,
       desktopSize: 32,
     );
 
     if (isMobile) {
-      // Mobile: Use drawer layout
       return Scaffold(
         backgroundColor: bg,
         appBar: AppBar(
@@ -113,14 +126,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           elevation: 0,
           centerTitle: true,
         ),
-        drawer: _buildSidebar(),
+        drawer: _buildSidebar(auth),
         body: SingleChildScrollView(
           padding: padding,
           child: _buildMainContent(titleFontSize),
         ),
       );
     } else if (isTablet) {
-      // Tablet: Collapsed sidebar or bottom navigation
       return Scaffold(
         backgroundColor: bg,
         body: Row(
@@ -131,13 +143,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
                     offset: const Offset(2, 0),
                   )
                 ],
               ),
-              child: _buildSidebarContent(),
+              child: _buildSidebarContent(auth),
             ),
             Expanded(
               child: SingleChildScrollView(
@@ -149,7 +161,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
       );
     } else {
-      // Desktop: Full sidebar layout
       return Scaffold(
         backgroundColor: bg,
         body: Row(
@@ -160,13 +171,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
                     offset: const Offset(2, 0),
                   )
                 ],
               ),
-              child: _buildSidebarContent(),
+              child: _buildSidebarContent(auth),
             ),
             Expanded(
               child: SingleChildScrollView(
@@ -180,23 +191,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
-  Widget _buildSidebar() {
-    return Drawer(
-      child: _buildSidebarContent(),
-    );
+  Widget _buildSidebar(AuthState auth) {
+    return Drawer(child: _buildSidebarContent(auth));
   }
 
-  Widget _buildSidebarContent() {
+  // ── Changed: receives AuthState as parameter instead of reading local vars ──
+  Widget _buildSidebarContent(AuthState auth) {
     return Column(
       children: [
-        // Header
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: primary,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               )
@@ -205,23 +214,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Teammate's ProfilePictureViewer logic — fully preserved ──
               GestureDetector(
-                onTap: isLoggedIn
+                onTap: auth.isLoggedIn
                     ? () async {
                         await showDialog(
                           context: context,
                           builder: (_) => ProfilePictureViewer(
-                            profilePictureUrl: profilePictureUrl ?? '',
-                            userName: userName ?? '',
-                            userEmail: userEmail ?? '',
+                            // ── Changed: reads from auth instead of local vars ──
+                            profilePictureUrl: auth.profilePicture ?? '',
+                            userName:          auth.userName       ?? '',
+                            userEmail:         auth.userEmail      ?? '',
                             onPictureUpdated: () async {
+                              // ── Teammate's profileProvider refresh — unchanged ──
                               await ref.read(profileProvider.notifier).refresh();
                               final profile = ref.read(profileProvider);
-                              setState(() {
-                                profilePictureUrl = profile.profilePicture;
-                                userName = profile.name;
-                                userEmail = profile.email;
-                              });
+                              // Also update authProvider so sidebar refreshes
+                              if (profile.profilePicture != null) {
+                                ref.read(authProvider.notifier).updateProfilePicture(
+                                  profile.profilePicture!,
+                                );
+                              }
                             },
                           ),
                         );
@@ -233,27 +246,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(60),
-                    image: profilePictureUrl != null && profilePictureUrl!.isNotEmpty
+                    // ── Changed: auth.profilePicture instead of profilePictureUrl ──
+                    image: auth.profilePicture != null &&
+                            auth.profilePicture!.isNotEmpty
                         ? DecorationImage(
                             image: NetworkImage(
+<<<<<<< HEAD
                               'http://localhost:8001/${profilePictureUrl!.replaceAll(r'\\', '/')}',
+=======
+                              'http://10.0.2.2:8001/${auth.profilePicture!.replaceAll(r'\\', '/')}',
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                             ),
                             fit: BoxFit.cover,
                           )
                         : null,
                   ),
-                  child: profilePictureUrl == null || profilePictureUrl!.isEmpty
-                      ? Icon(
-                          Icons.person,
-                          color: primary,
-                          size: 30,
-                        )
+                  child: auth.profilePicture == null ||
+                          auth.profilePicture!.isEmpty
+                      ? Icon(Icons.person, color: primary, size: 30)
                       : null,
                 ),
               ),
               const SizedBox(height: 12),
+              // ── Changed: auth.userName instead of userName ──
               Text(
-                userName ?? 'Guest User',
+                auth.userName ?? 'Guest User',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -261,17 +278,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 4),
+              // ── Changed: auth.userEmail instead of userEmail ──
               Text(
-                userEmail ?? 'not logged in',
+                auth.userEmail ?? 'not logged in',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                   fontSize: 12,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 16),
-              if (!isLoggedIn)
+
+              // ── Changed: auth.isLoggedIn instead of isLoggedIn ──
+              if (!auth.isLoggedIn)
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -279,7 +299,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      ).then((_) => loadUser());
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
@@ -288,24 +308,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     child: const Text('Login'),
                   ),
                 ),
-              if (isLoggedIn)
+
+              if (auth.isLoggedIn)
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () async {
-                      await SharedPreferences.getInstance().then((prefs) {
-                        prefs.remove('access_token');
-                        prefs.remove('user_email');
-                        prefs.remove('user_name');
-                        prefs.remove('profile_picture');
-                      });
-                      setState(() {
-                        isLoggedIn = false;
-                        userName = null;
-                        userEmail = null;
-                        profilePictureUrl = null;
-                      });
-                    },
+                    // ── Changed: calls _logout() which uses ref.read ──
+                    onPressed: _logout,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
                       foregroundColor: Colors.white,
@@ -316,20 +325,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ],
           ),
         ),
-        // Menu items
+
+        // Menu items — unchanged
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(12),
             children: [
-              _sideItem(Icons.home, "Dashboard", true),
-              _sideItem(Icons.person, "My Profile", false),
-              _sideItem(Icons.description, "Resume Analyzer", false),
-              _sideItem(Icons.people, "Candidates", false),
-              _sideItem(Icons.forum, "Community", false),
-              _sideItem(Icons.mail, "Messages", false, badgeCount: totalUnreadMessages),
-              _sideItem(Icons.feed, "Feed", false),
-              _sideItem(Icons.notifications, "Notifications", false, badgeCount: totalUnreadNotifications),
-              _sideItem(Icons.analytics, "Analytics", false),
+              _sideItem(Icons.home,          "Dashboard",       true),
+              _sideItem(Icons.person,        "My Profile",      false),
+              _sideItem(Icons.description,   "Resume Analyzer", false),
+              _sideItem(Icons.people,        "Candidates",      false),
+              _sideItem(Icons.forum,         "Community",       false),
+              _sideItem(Icons.mail,          "Messages",        false, badgeCount: totalUnreadMessages),
+              _sideItem(Icons.feed,          "Feed",            false),
+              _sideItem(Icons.notifications, "Notifications",   false, badgeCount: totalUnreadNotifications),
+              _sideItem(Icons.analytics,     "Analytics",       false),
             ],
           ),
         ),
@@ -361,7 +371,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               )
@@ -382,12 +392,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 style: TextStyle(color: Colors.grey[700]),
               ),
               const SizedBox(height: 16),
-              _featureItem("📄", "Resume Analyzer", "Upload and analyze your resume with AI-powered insights"),
-              _featureItem("👥", "Candidates", "Browse and connect with other professionals"),
-              _featureItem("💬", "Community", "Join discussions and share your experience"),
-              _featureItem("✉️", "Messages", "Communicate with connections"),
-              _featureItem("📰", "Feed", "View posts from your network"),
-              _featureItem("📊", "Analytics", "View detailed analytics and history"),
+              _featureItem("📄", "Resume Analyzer",  "Upload and analyze your resume with AI-powered insights"),
+              _featureItem("👥", "Candidates",        "Browse and connect with other professionals"),
+              _featureItem("💬", "Community",         "Join discussions and share your experience"),
+              _featureItem("✉️", "Messages",          "Communicate with connections"),
+              _featureItem("📰", "Feed",              "View posts from your network"),
+              _featureItem("📊", "Analytics",         "View detailed analytics and history"),
             ],
           ),
         ),
@@ -407,15 +417,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                ),
+                Text(description,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13)),
               ],
             ),
           ),
@@ -424,11 +431,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _sideItem(IconData icon, String title, bool active, {int badgeCount = 0}) {
+  Widget _sideItem(IconData icon, String title, bool active,
+      {int badgeCount = 0}) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: active ? primary.withOpacity(0.15) : Colors.transparent,
+        color: active
+            ? primary.withValues(alpha: 0.15)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
       ),
       child: ListTile(
@@ -441,7 +451,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 right: -5,
                 child: Container(
                   padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: Colors.red,
                     shape: BoxShape.circle,
                   ),
@@ -460,65 +470,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         title: Text(title),
         onTap: () {
           if (title == "My Profile") {
-            requireAuth(() {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const MyProfileScreen()),
-              );
-            });
+            requireAuth(() => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const MyProfileScreen())));
           } else if (title == "Resume Analyzer") {
-            requireAuth(() {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ResumeUploadScreen()),
-              );
-            });
+            requireAuth(() => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const ResumeUploadScreen())));
           } else if (title == "Candidates") {
-            requireAuth(() {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CandidatesScreen()),
-              );
-            });
+            requireAuth(() => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const CandidatesScreen())));
           } else if (title == "Community") {
-            requireAuth(() {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CommunityScreen()),
-              );
-            });
+            requireAuth(() => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const CommunityScreen())));
           } else if (title == "Messages") {
-            requireAuth(() {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const MessagesScreen()),
-              ).then((_) {
-                _refreshUnreadCount();
-              });
-            });
+            requireAuth(() => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const MessagesScreen()))
+                .then((_) => _refreshUnreadCount()));
           } else if (title == "Feed") {
-            requireAuth(() {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const FeedScreen()),
-              );
-            });
+            requireAuth(() => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const FeedScreen())));
           } else if (title == "Notifications") {
-            requireAuth(() {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-              ).then((_) {
-                _refreshUnreadNotifications();
-              });
-            });
+            requireAuth(() => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const NotificationsScreen()))
+                .then((_) => _refreshUnreadNotifications()));
           } else if (title == "Analytics") {
-            requireAuth(() {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AnalyticsScreen()),
-              );
-            });
+            requireAuth(() => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const AnalyticsScreen())));
           }
         },
       ),

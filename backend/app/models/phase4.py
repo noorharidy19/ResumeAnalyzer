@@ -1,7 +1,27 @@
 import json
-import anthropic
+from dotenv import load_dotenv
+import os
+from groq import Groq
 
-client = anthropic.Anthropic()
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
+load_dotenv(env_path)
+
+api_key = os.getenv("GROQ_API_KEY")
+
+if not api_key:
+    raise ValueError(
+        "❌ GROQ_API_KEY not found in .env file!\n"
+        "Please create a .env file in the backend directory with:\n"
+        "  GROQ_API_KEY=your_key_from_https://console.groq.com"
+    )
+
+if not api_key.startswith('gsk_'):
+    raise ValueError(
+        "❌ GROQ_API_KEY appears invalid (should start with 'gsk_')\n"
+        "Get a valid key from: https://console.groq.com/keys"
+    )
+
+client = Groq(api_key=api_key)
 
 
 def run_phase4(phase1_data: dict, phase2_data: dict, target_job: str | None = None) -> dict:
@@ -64,16 +84,16 @@ Rules:
 - Quantify wherever the original or context allows (%, $, time saved, team size)
 """
 
-    message = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=4096,
-        messages=[
-            {"role": "user", "content": user_prompt}
-        ],
-        system=system_prompt,
-    )
-
-    raw = message.content[0].text.strip()
+    response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.3,
+            max_tokens=2500,
+        )
+    raw = response.choices[0].message.content.strip()
 
     # Strip accidental markdown fences if model adds them
     if raw.startswith("```"):

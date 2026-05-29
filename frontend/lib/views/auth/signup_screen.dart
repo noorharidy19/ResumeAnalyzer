@@ -1,18 +1,20 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'login_screen.dart';
-import '../../utils/responsive_helper.dart';
+import '../../providers/app_providers.dart';
 
-class SignupScreen extends StatefulWidget {
+// ── Changed: StatefulWidget → ConsumerStatefulWidget ──
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+// ── Changed: State → ConsumerState ──
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final name     = TextEditingController();
@@ -20,6 +22,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final phone    = TextEditingController();
   final password = TextEditingController();
 
+<<<<<<< HEAD
   bool isLoading       = false;
   bool obscurePassword = true;
   String selectedRole  = 'user';   // 'user' or 'company'
@@ -44,12 +47,29 @@ class _SignupScreenState extends State<SignupScreen> {
     try {
       final res = await http.post(
         Uri.parse("http://127.0.0.1:8001/auth/signup"),
+=======
+  final primary = const Color(0xFF5C6BC0);
+  final accent  = const Color(0xFF3F51B5);
+
+  // ── REMOVED: bool isLoading — now lives in isLoadingProvider ──
+
+  Future<void> signup() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    // ── Changed: setState → ref.read ──
+    ref.read(isLoadingProvider.notifier).state = true;
+
+    try {
+      final res = await http.post(
+        Uri.parse("http://10.0.2.2:8001/auth/signup"),
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "name":         name.text.trim(),
           "email":        email.text.trim(),
           "phone_number": phone.text.trim(),
           "password":     password.text.trim(),
+<<<<<<< HEAD
           "role":         selectedRole,           // ← sends role to backend
         }),
       );
@@ -59,12 +79,31 @@ class _SignupScreenState extends State<SignupScreen> {
       if (!mounted) return;
 
       if (res.statusCode == 200 || res.statusCode == 201) {
+=======
+        }),
+      );
+
+      ref.read(isLoadingProvider.notifier).state = false;
+
+      // ── FIX: check mounted after every await before touching context ──
+      if (!mounted) return;
+
+      final data = jsonDecode(res.body);
+
+      if (res.statusCode == 200) {
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Account created successfully ✅"),
             backgroundColor: Colors.green,
           ),
         );
+<<<<<<< HEAD
+=======
+
+        if (!mounted) return; // ── FIX: check before Navigator ──
+
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -78,6 +117,7 @@ class _SignupScreenState extends State<SignupScreen> {
         );
       }
     } catch (e) {
+<<<<<<< HEAD
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -88,11 +128,26 @@ class _SignupScreenState extends State<SignupScreen> {
       }
     } finally {
       if (mounted) setState(() => isLoading = false);
+=======
+      ref.read(isLoadingProvider.notifier).state = false;
+
+      if (!mounted) return; // ── FIX ──
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Connection Error ❌"),
+          backgroundColor: Colors.red,
+        ),
+      );
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // ── NEW: ref.watch in build ──
+    final isLoading = ref.watch(isLoadingProvider);
+
     return Scaffold(
       backgroundColor: bg,
       body: Center(
@@ -112,14 +167,23 @@ class _SignupScreenState extends State<SignupScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+<<<<<<< HEAD
 
                       // ── HEADER ────────────────────────────────────────
+=======
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       Row(
                         children: [
                           CircleAvatar(
                             radius: 28,
+<<<<<<< HEAD
                             backgroundColor: primary.withOpacity(0.1),
                             child: const Icon(Icons.person_add, color: primary),
+=======
+                            // ── FIX: withOpacity → withValues ──
+                            backgroundColor: primary.withValues(alpha: 0.1),
+                            child: Icon(Icons.person_add, color: primary),
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                           ),
                           const SizedBox(width: 12),
                           Column(
@@ -144,6 +208,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       const SizedBox(height: 20),
 
+<<<<<<< HEAD
                       // ── ACCOUNT TYPE TOGGLE ───────────────────────────
                       Container(
                         decoration: BoxDecoration(
@@ -173,6 +238,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       const SizedBox(height: 16),
 
                       // ── NAME ──────────────────────────────────────────
+=======
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       TextFormField(
                         controller: name,
                         validator: (v) =>
@@ -189,7 +256,10 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       const SizedBox(height: 12),
 
+<<<<<<< HEAD
                       // ── EMAIL ─────────────────────────────────────────
+=======
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       TextFormField(
                         controller: email,
                         keyboardType: TextInputType.emailAddress,
@@ -203,7 +273,10 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       const SizedBox(height: 12),
 
+<<<<<<< HEAD
                       // ── PHONE ─────────────────────────────────────────
+=======
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       TextFormField(
                         controller: phone,
                         keyboardType: TextInputType.phone,
@@ -214,7 +287,10 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       const SizedBox(height: 12),
 
+<<<<<<< HEAD
                       // ── PASSWORD ──────────────────────────────────────
+=======
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       TextFormField(
                         controller: password,
                         obscureText: obscurePassword,
@@ -240,7 +316,10 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       const SizedBox(height: 20),
 
+<<<<<<< HEAD
                       // ── SIGN UP BUTTON ────────────────────────────────
+=======
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -254,11 +333,17 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                           child: isLoading
                               ? const CircularProgressIndicator(color: Colors.white)
+<<<<<<< HEAD
                               : Text(
                                   selectedRole == 'company'
                                       ? "Create Company Account"
                                       : "Sign Up",
                                   style: const TextStyle(
+=======
+                              : const Text(
+                                  "Sign Up",
+                                  style: TextStyle(
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
@@ -271,10 +356,14 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       TextButton(
                         onPressed: () => Navigator.pop(context),
+<<<<<<< HEAD
                         child: const Text(
                           "Already have an account? Login",
                           style: TextStyle(color: primary),
                         ),
+=======
+                        child: const Text("Already have an account? Login"),
+>>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       ),
                     ],
                   ),
