@@ -38,7 +38,11 @@ class Notification {
 }
 
 class NotificationService {
+<<<<<<< HEAD
   static const String baseUrl = 'http://192.168.1.5:8001/api';
+=======
+  static const String baseUrl = 'http://localhost:8001/api';
+>>>>>>> 682891f9250cfcc965551e506d5d38534697d4e1
 
   static Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();

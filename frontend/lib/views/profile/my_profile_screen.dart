@@ -178,7 +178,11 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   image: profilePictureUrl != null && profilePictureUrl!.isNotEmpty
                       ? DecorationImage(
                           image: NetworkImage(
+<<<<<<< HEAD
                             'http://192.168.1.5:8001/${profilePictureUrl!.replaceAll(r'\', '/')}',
+=======
+                            'http://localhost:8001/${profilePictureUrl!.replaceAll(r'\', '/')}',
+>>>>>>> 682891f9250cfcc965551e506d5d38534697d4e1
                           ),
                           fit: BoxFit.cover,
                         )

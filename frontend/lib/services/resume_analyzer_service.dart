@@ -3,7 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ResumeAnalyzerService {
+<<<<<<< HEAD
   static const String baseUrl = 'http://192.168.1.5:8001/api/resume';
+=======
+  static const String baseUrl = 'http://localhost:8001/api/resume';
+>>>>>>> 682891f9250cfcc965551e506d5d38534697d4e1
 
   /// Upload resume PDF and get full analysis (Phase 1, 2, 3)
   static Future<Map<String, dynamic>> analyzeResume(

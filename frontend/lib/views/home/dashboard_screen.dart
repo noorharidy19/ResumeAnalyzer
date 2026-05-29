@@ -15,8 +15,8 @@ import '../../services/message_service.dart';
 import '../../services/notification_service.dart';
 import '../cv_enhancement/cv_enhancement_screen.dart';
 import '../../utils/responsive_helper.dart';
-import '../../core/providers.dart';           // teammate's profileProvider — unchanged
-import '../../providers/app_providers.dart';  // our authProvider + isLoadingProvider
+import '../../core/providers.dart';
+import '../../providers/app_providers.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -26,10 +26,6 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
-  // ── REMOVED: String? userEmail, userName, profilePictureUrl, bool isLoggedIn ──
-  // All of that now comes from ref.watch(authProvider) in build()
-
-  // Unread counts stay as local state — they are NOT auth data
   int totalUnreadMessages      = 0;
   int totalUnreadNotifications = 0;
 
@@ -39,8 +35,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // ── REMOVED: loadUser() — no longer needed, auth comes from authProvider ──
-    // Refresh unread counts once the first frame is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = ref.read(authProvider);
       if (auth.isLoggedIn) {
@@ -51,7 +45,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Future<void> _refreshUnreadCount() async {
-    // ── Changed: read isLoggedIn from authProvider ──
     if (ref.read(authProvider).isLoggedIn) {
       final result = await MessageService.getUnreadCount();
       if (!mounted) return;
@@ -75,10 +68,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
-  // ── REMOVED: loadUser() ──
-
   void requireAuth(VoidCallback callback) {
-    // ── Changed: read isLoggedIn from authProvider ──
     if (ref.read(authProvider).isLoggedIn) {
       callback();
     } else {
@@ -86,15 +76,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
-      // No .then(loadUser) needed — authProvider updates automatically on login
     }
   }
 
   Future<void> _logout() async {
-    // 1. Clear Riverpod auth state
     ref.read(authProvider.notifier).logout();
-
-    // 2. Clear SharedPreferences so session doesn't restore on next app start
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
     await prefs.remove('user_email');
@@ -104,7 +90,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ── NEW: ref.watch — rebuilds whenever auth state changes ──
     final auth = ref.watch(authProvider);
 
     final isMobile      = ResponsiveHelper.isMobile(context);
@@ -195,7 +180,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Drawer(child: _buildSidebarContent(auth));
   }
 
-  // ── Changed: receives AuthState as parameter instead of reading local vars ──
   Widget _buildSidebarContent(AuthState auth) {
     return Column(
       children: [
@@ -214,22 +198,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Teammate's ProfilePictureViewer logic — fully preserved ──
               GestureDetector(
                 onTap: auth.isLoggedIn
                     ? () async {
                         await showDialog(
                           context: context,
                           builder: (_) => ProfilePictureViewer(
-                            // ── Changed: reads from auth instead of local vars ──
                             profilePictureUrl: auth.profilePicture ?? '',
                             userName:          auth.userName       ?? '',
                             userEmail:         auth.userEmail      ?? '',
                             onPictureUpdated: () async {
-                              // ── Teammate's profileProvider refresh — unchanged ──
                               await ref.read(profileProvider.notifier).refresh();
                               final profile = ref.read(profileProvider);
-                              // Also update authProvider so sidebar refreshes
                               if (profile.profilePicture != null) {
                                 ref.read(authProvider.notifier).updateProfilePicture(
                                   profile.profilePicture!,
@@ -246,12 +226,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(60),
-                    // ── Changed: auth.profilePicture instead of profilePictureUrl ──
                     image: auth.profilePicture != null &&
                             auth.profilePicture!.isNotEmpty
                         ? DecorationImage(
                             image: NetworkImage(
-                              'http://10.0.2.2:8001/${auth.profilePicture!.replaceAll(r'\\', '/')}',
+                              'http://localhost:8001/${auth.profilePicture!.replaceAll(r'\\', '/')}',
                             ),
                             fit: BoxFit.cover,
                           )
@@ -264,7 +243,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              // ── Changed: auth.userName instead of userName ──
               Text(
                 auth.userName ?? 'Guest User',
                 style: const TextStyle(
@@ -274,7 +252,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              // ── Changed: auth.userEmail instead of userEmail ──
               Text(
                 auth.userEmail ?? 'not logged in',
                 style: TextStyle(
@@ -286,7 +263,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               const SizedBox(height: 16),
 
-              // ── Changed: auth.isLoggedIn instead of isLoggedIn ──
               if (!auth.isLoggedIn)
                 SizedBox(
                   width: double.infinity,
@@ -309,7 +285,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    // ── Changed: calls _logout() which uses ref.read ──
                     onPressed: _logout,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
@@ -322,7 +297,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ),
 
-        // Menu items — unchanged
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(12),
@@ -432,9 +406,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: active
-            ? primary.withValues(alpha: 0.15)
-            : Colors.transparent,
+        color: active ? primary.withValues(alpha: 0.15) : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
       ),
       child: ListTile(

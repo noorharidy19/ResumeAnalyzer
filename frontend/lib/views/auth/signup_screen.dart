@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'login_screen.dart';
 import '../../providers/app_providers.dart';
 
-// ── Changed: StatefulWidget → ConsumerStatefulWidget ──
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
@@ -13,7 +12,6 @@ class SignupScreen extends ConsumerStatefulWidget {
   ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-// ── Changed: State → ConsumerState ──
 class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
 
@@ -22,46 +20,52 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final phone    = TextEditingController();
   final password = TextEditingController();
 
-  final primary = const Color(0xFF5C6BC0);
-  final accent  = const Color(0xFF3F51B5);
+  bool obscurePassword = true;
+  String selectedRole  = 'user';
 
-  // ── REMOVED: bool isLoading — now lives in isLoadingProvider ──
+  static const primary = Color(0xFF5C6BC0);
+  static const accent  = Color(0xFF3F51B5);
+  static const bg      = Color(0xFFF0F7FF);
+
+  @override
+  void dispose() {
+    name.dispose();
+    email.dispose();
+    phone.dispose();
+    password.dispose();
+    super.dispose();
+  }
 
   Future<void> signup() async {
     if (!_formKey.currentState!.validate()) return;
-
-    // ── Changed: setState → ref.read ──
     ref.read(isLoadingProvider.notifier).state = true;
 
     try {
       final res = await http.post(
-        Uri.parse("http://10.0.2.2:8001/auth/signup"),
+        Uri.parse("http://localhost:8001/auth/signup"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "name":         name.text.trim(),
           "email":        email.text.trim(),
           "phone_number": phone.text.trim(),
           "password":     password.text.trim(),
+          "role":         selectedRole,
         }),
       );
 
       ref.read(isLoadingProvider.notifier).state = false;
-
-      // ── FIX: check mounted after every await before touching context ──
       if (!mounted) return;
 
       final data = jsonDecode(res.body);
 
-      if (res.statusCode == 200) {
+      if (res.statusCode == 200 || res.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Account created successfully ✅"),
             backgroundColor: Colors.green,
           ),
         );
-
-        if (!mounted) return; // ── FIX: check before Navigator ──
-
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -76,12 +80,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       }
     } catch (e) {
       ref.read(isLoadingProvider.notifier).state = false;
-
-      if (!mounted) return; // ── FIX ──
-
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Connection Error ❌"),
+        SnackBar(
+          content: Text("Connection error: $e"),
           backgroundColor: Colors.red,
         ),
       );
@@ -90,11 +92,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ── NEW: ref.watch in build ──
     final isLoading = ref.watch(isLoadingProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F7FF),
+      backgroundColor: bg,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -112,19 +113,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+
                       Row(
                         children: [
                           CircleAvatar(
                             radius: 28,
-                            // ── FIX: withOpacity → withValues ──
                             backgroundColor: primary.withValues(alpha: 0.1),
-                            child: Icon(Icons.person_add, color: primary),
+                            child: const Icon(Icons.person_add, color: primary),
                           ),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const Text(
                                 "Create Account",
                                 style: TextStyle(
                                   fontSize: 20,
@@ -132,34 +133,67 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                                   color: primary,
                                 ),
                               ),
-                              const Text(
+                              Text(
                                 "Sign up to continue",
-                                style: TextStyle(color: Colors.grey),
+                                style: TextStyle(color: Colors.grey[600]),
                               ),
                             ],
-                          )
+                          ),
                         ],
                       ),
 
                       const SizedBox(height: 20),
 
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F7FF),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: primary.withValues(alpha: 0.2)),
+                        ),
+                        padding: const EdgeInsets.all(4),
+                        child: Row(
+                          children: [
+                            _RoleTab(
+                              label: "Job Seeker",
+                              icon: Icons.person_outline,
+                              selected: selectedRole == 'user',
+                              onTap: () => setState(() => selectedRole = 'user'),
+                            ),
+                            _RoleTab(
+                              label: "Company",
+                              icon: Icons.business_outlined,
+                              selected: selectedRole == 'company',
+                              onTap: () => setState(() => selectedRole = 'company'),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
                       TextFormField(
                         controller: name,
                         validator: (v) =>
-                            v == null || v.isEmpty ? "Name required" : null,
-                        decoration: inputStyle("Full Name", Icons.person),
+                            (v == null || v.isEmpty) ? "Name required" : null,
+                        decoration: inputStyle(
+                          selectedRole == 'company' ? "Company Name" : "Full Name",
+                          selectedRole == 'company'
+                              ? Icons.business_outlined
+                              : Icons.person_outline,
+                        ),
                       ),
 
                       const SizedBox(height: 12),
 
                       TextFormField(
                         controller: email,
+                        keyboardType: TextInputType.emailAddress,
                         validator: (v) {
                           if (v == null || v.isEmpty) return "Email required";
                           if (!v.contains("@")) return "Invalid email";
                           return null;
                         },
-                        decoration: inputStyle("Email", Icons.email),
+                        decoration: inputStyle("Email", Icons.email_outlined),
                       ),
 
                       const SizedBox(height: 12),
@@ -168,21 +202,33 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         controller: phone,
                         keyboardType: TextInputType.phone,
                         validator: (v) =>
-                            v == null || v.isEmpty ? "Phone required" : null,
-                        decoration: inputStyle("Phone Number", Icons.phone),
+                            (v == null || v.isEmpty) ? "Phone required" : null,
+                        decoration: inputStyle("Phone Number", Icons.phone_outlined),
                       ),
 
                       const SizedBox(height: 12),
 
                       TextFormField(
                         controller: password,
-                        obscureText: true,
+                        obscureText: obscurePassword,
                         validator: (v) {
                           if (v == null || v.isEmpty) return "Password required";
                           if (v.length < 6) return "Min 6 characters";
                           return null;
                         },
-                        decoration: inputStyle("Password", Icons.lock),
+                        decoration: inputStyle("Password", Icons.lock_outline)
+                            .copyWith(
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: primary,
+                            ),
+                            onPressed: () =>
+                                setState(() => obscurePassword = !obscurePassword),
+                          ),
+                        ),
                       ),
 
                       const SizedBox(height: 20),
@@ -200,9 +246,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           ),
                           child: isLoading
                               ? const CircularProgressIndicator(color: Colors.white)
-                              : const Text(
-                                  "Sign Up",
-                                  style: TextStyle(
+                              : Text(
+                                  selectedRole == 'company'
+                                      ? "Create Company Account"
+                                      : "Sign Up",
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
@@ -215,7 +263,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text("Already have an account? Login"),
+                        child: const Text(
+                          "Already have an account? Login",
+                          style: TextStyle(color: primary),
+                        ),
                       ),
                     ],
                   ),
@@ -237,6 +288,55 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
+      ),
+    );
+  }
+}
+
+class _RoleTab extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  static const primary = Color(0xFF5C6BC0);
+  static const accent  = Color(0xFF3F51B5);
+
+  const _RoleTab({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: selected ? Colors.white : primary),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: selected ? Colors.white : primary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
