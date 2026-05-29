@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'login_screen.dart';
 import '../../providers/app_providers.dart';
 
-// ── Changed: StatefulWidget → ConsumerStatefulWidget ──
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
@@ -13,7 +12,6 @@ class SignupScreen extends ConsumerStatefulWidget {
   ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-// ── Changed: State → ConsumerState ──
 class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
 
@@ -22,10 +20,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final phone    = TextEditingController();
   final password = TextEditingController();
 
-<<<<<<< HEAD
-  bool isLoading       = false;
   bool obscurePassword = true;
-  String selectedRole  = 'user';   // 'user' or 'company'
+  String selectedRole  = 'user';
 
   static const primary = Color(0xFF5C6BC0);
   static const accent  = Color(0xFF3F51B5);
@@ -42,68 +38,34 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Future<void> signup() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => isLoading = true);
-
-    try {
-      final res = await http.post(
-        Uri.parse("http://127.0.0.1:8001/auth/signup"),
-=======
-  final primary = const Color(0xFF5C6BC0);
-  final accent  = const Color(0xFF3F51B5);
-
-  // ── REMOVED: bool isLoading — now lives in isLoadingProvider ──
-
-  Future<void> signup() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    // ── Changed: setState → ref.read ──
     ref.read(isLoadingProvider.notifier).state = true;
 
     try {
       final res = await http.post(
-        Uri.parse("http://10.0.2.2:8001/auth/signup"),
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
+        Uri.parse("http://localhost:8001/auth/signup"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "name":         name.text.trim(),
           "email":        email.text.trim(),
           "phone_number": phone.text.trim(),
           "password":     password.text.trim(),
-<<<<<<< HEAD
-          "role":         selectedRole,           // ← sends role to backend
-        }),
-      );
-
-      final data = jsonDecode(res.body);
-
-      if (!mounted) return;
-
-      if (res.statusCode == 200 || res.statusCode == 201) {
-=======
+          "role":         selectedRole,
         }),
       );
 
       ref.read(isLoadingProvider.notifier).state = false;
-
-      // ── FIX: check mounted after every await before touching context ──
       if (!mounted) return;
 
       final data = jsonDecode(res.body);
 
-      if (res.statusCode == 200) {
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
+      if (res.statusCode == 200 || res.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Account created successfully ✅"),
             backgroundColor: Colors.green,
           ),
         );
-<<<<<<< HEAD
-=======
-
-        if (!mounted) return; // ── FIX: check before Navigator ──
-
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -117,35 +79,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         );
       }
     } catch (e) {
-<<<<<<< HEAD
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Connection error: $e"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => isLoading = false);
-=======
       ref.read(isLoadingProvider.notifier).state = false;
-
-      if (!mounted) return; // ── FIX ──
-
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Connection Error ❌"),
+        SnackBar(
+          content: Text("Connection error: $e"),
           backgroundColor: Colors.red,
         ),
       );
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ── NEW: ref.watch in build ──
     final isLoading = ref.watch(isLoadingProvider);
 
     return Scaffold(
@@ -167,23 +113,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-<<<<<<< HEAD
 
-                      // ── HEADER ────────────────────────────────────────
-=======
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       Row(
                         children: [
                           CircleAvatar(
                             radius: 28,
-<<<<<<< HEAD
-                            backgroundColor: primary.withOpacity(0.1),
-                            child: const Icon(Icons.person_add, color: primary),
-=======
-                            // ── FIX: withOpacity → withValues ──
                             backgroundColor: primary.withValues(alpha: 0.1),
-                            child: Icon(Icons.person_add, color: primary),
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
+                            child: const Icon(Icons.person_add, color: primary),
                           ),
                           const SizedBox(width: 12),
                           Column(
@@ -208,13 +144,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                       const SizedBox(height: 20),
 
-<<<<<<< HEAD
-                      // ── ACCOUNT TYPE TOGGLE ───────────────────────────
                       Container(
                         decoration: BoxDecoration(
                           color: const Color(0xFFF0F7FF),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: primary.withOpacity(0.2)),
+                          border: Border.all(color: primary.withValues(alpha: 0.2)),
                         ),
                         padding: const EdgeInsets.all(4),
                         child: Row(
@@ -237,17 +171,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                       const SizedBox(height: 16),
 
-                      // ── NAME ──────────────────────────────────────────
-=======
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       TextFormField(
                         controller: name,
                         validator: (v) =>
                             (v == null || v.isEmpty) ? "Name required" : null,
                         decoration: inputStyle(
-                          selectedRole == 'company'
-                              ? "Company Name"
-                              : "Full Name",
+                          selectedRole == 'company' ? "Company Name" : "Full Name",
                           selectedRole == 'company'
                               ? Icons.business_outlined
                               : Icons.person_outline,
@@ -256,10 +185,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                       const SizedBox(height: 12),
 
-<<<<<<< HEAD
-                      // ── EMAIL ─────────────────────────────────────────
-=======
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       TextFormField(
                         controller: email,
                         keyboardType: TextInputType.emailAddress,
@@ -273,10 +198,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                       const SizedBox(height: 12),
 
-<<<<<<< HEAD
-                      // ── PHONE ─────────────────────────────────────────
-=======
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       TextFormField(
                         controller: phone,
                         keyboardType: TextInputType.phone,
@@ -287,10 +208,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                       const SizedBox(height: 12),
 
-<<<<<<< HEAD
-                      // ── PASSWORD ──────────────────────────────────────
-=======
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       TextFormField(
                         controller: password,
                         obscureText: obscurePassword,
@@ -316,10 +233,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                       const SizedBox(height: 20),
 
-<<<<<<< HEAD
-                      // ── SIGN UP BUTTON ────────────────────────────────
-=======
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -333,17 +246,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           ),
                           child: isLoading
                               ? const CircularProgressIndicator(color: Colors.white)
-<<<<<<< HEAD
                               : Text(
                                   selectedRole == 'company'
                                       ? "Create Company Account"
                                       : "Sign Up",
                                   style: const TextStyle(
-=======
-                              : const Text(
-                                  "Sign Up",
-                                  style: TextStyle(
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
@@ -356,14 +263,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-<<<<<<< HEAD
                         child: const Text(
                           "Already have an account? Login",
                           style: TextStyle(color: primary),
                         ),
-=======
-                        child: const Text("Already have an account? Login"),
->>>>>>> 03014fbd869b5f87bab394423e18c6467473d0c2
                       ),
                     ],
                   ),
@@ -390,7 +293,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   }
 }
 
-// ── Role tab widget ────────────────────────────────────────────────────────────
 class _RoleTab extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -422,11 +324,7 @@ class _RoleTab extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 18,
-                color: selected ? Colors.white : primary,
-              ),
+              Icon(icon, size: 18, color: selected ? Colors.white : primary),
               const SizedBox(width: 6),
               Text(
                 label,
