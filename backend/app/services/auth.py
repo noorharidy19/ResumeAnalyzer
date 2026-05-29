@@ -1,64 +1,50 @@
 from app.models.user import User
-import hashlib
+from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from app.utils.auth_utils import verify_token
 
-security = HTTPBearer()
+security    = HTTPBearer()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 def signup_user(data, db):
-
-    # 🔥 check if email exists
     existing_user = db.query(User).filter(User.email == data.email).first()
-
     if existing_user:
-        return None 
-
-    hashed = hashlib.sha256(data.password.encode()).hexdigest()
+        return None
 
     user = User(
-        name=data.name,
-        email=data.email,
-        password=hashed,
-        phone_number=data.phone_number
+        name         = data.name,
+        email        = data.email,
+        password     = pwd_context.hash(data.password),
+        phone_number = data.phone_number,
+        role         = data.role,                        # ← was missing
     )
 
     db.add(user)
     db.commit()
     db.refresh(user)
-
     return user
 
-def login_user(data, db):
-    hashed = hashlib.sha256(data.password.encode()).hexdigest()
 
+def login_user(data, db):
     user = db.query(User).filter(User.email == data.email).first()
 
-    if not user or user.password != hashed:
+    if not user or not pwd_context.verify(data.password, user.password):
         return None
 
     return user
 
-def get_current_user(credentials = Depends(security)) -> dict:
-    """Verify JWT token and return current user"""
-    try:
-        token = credentials.credentials
-        print(f"Token received: {token[:20]}..." if token else "No token")
-        
-        user_id = verify_token(token)
-        
-        if not user_id:
-            print("Token verification failed - invalid or expired")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired token"
-            )
-        
-        print(f"User authenticated: {user_id}")
-        return {"id": user_id}
-    except Exception as e:
-        print(f"Auth error: {str(e)}")
+
+def get_current_user(credentials=Depends(security)) -> dict:
+    token   = credentials.credentials
+    user_id = verify_token(token)
+
+    if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials"
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
         )
+
+    return {"id": user_id}

@@ -25,3 +25,7 @@ class User(Base):
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     
     cv_enhancements = relationship("CVEnhancement", back_populates="user", cascade="all, delete-orphan")
+    
+    posted_jobs  = relationship("Job", back_populates="company",   cascade="all, delete-orphan")
+    
+    applications = relationship("Application", back_populates="applicant", cascade="all, delete-orphan")

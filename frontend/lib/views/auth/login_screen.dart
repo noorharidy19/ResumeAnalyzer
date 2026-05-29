@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'signup_screen.dart';
 import '../home/dashboard_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../company/company_dashboard_screen.dart';
 import '../../utils/responsive_helper.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -13,70 +16,69 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final primary = const Color(0xFF5C6BC0);
-  final accent = const Color(0xFF3F51B5);
-
   final _formKey = GlobalKey<FormState>();
+  final email    = TextEditingController();
+  final password = TextEditingController();
 
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  bool isLoading      = false;
+  bool obscurePassword = true;
 
-  bool isLoading = false;
+  // ── Same colors as SignupScreen ──────────────────────────────────────────
+  static const primary = Color(0xFF5C6BC0);
+  static const accent  = Color(0xFF3F51B5);
+  static const bg      = Color(0xFFF0F7FF);
+
+  @override
+  void dispose() {
+    email.dispose();
+    password.dispose();
+    super.dispose();
+  }
 
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => isLoading = true);
 
-    final url = Uri.parse("http://10.0.2.2:8001/auth/login");
-
     try {
-      final response = await http.post(
-        url,
+      final res = await http.post(
+        Uri.parse("http://localhost:8001/auth/login"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "email": emailController.text.trim(),
-          "password": passwordController.text.trim(),
+          "email":    email.text.trim(),
+          "password": password.text.trim(),
         }),
       );
 
-      setState(() => isLoading = false);
+      final data = jsonDecode(res.body);
 
-      final data = jsonDecode(response.body);
-      print("📤 Backend Response: $data"); // DEBUG
+      if (res.statusCode == 200) {
+        // ── Save token + user info ─────────────────────────────────────────
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access_token', data['access_token']);
+        await prefs.setString('user_role',    data['user']['role']  ?? 'user');
+        await prefs.setInt('user_id',         data['user']['id']);
+        await prefs.setString('user_name',    data['user']['name']  ?? '');
+        await prefs.setString('user_email',   data['user']['email'] ?? '');
 
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Login successful ✅"),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (!mounted) return;
 
-        // Save token and user email to SharedPreferences (session)
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          if (data['access_token'] != null) {
-            await prefs.setString('access_token', data['access_token']);
-          }
-          final user = data['user'] as Map<String, dynamic>?;
-          final email = user != null ? user['email'] as String? : null;
-          final name = user != null ? user['name'] as String? : null;
-          final profilePicture = user != null ? user['profile_picture'] as String? : null;
-          print("👤 Extracted Name: $name, Email: $email, Profile: $profilePicture"); // DEBUG
-          if (email != null) await prefs.setString('user_email', email);
-          if (name != null) await prefs.setString('user_name', name);
-          if (profilePicture != null) await prefs.setString('profile_picture', profilePicture);
-        } catch (e) {
-          print("❌ Error saving prefs: $e"); // DEBUG
+        // ── Route based on role ────────────────────────────────────────────
+        final role = data['user']['role'] ?? 'user';
+
+        if (role == 'company') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const CompanyDashboardScreen()),
+          );
+        } else {
+          // role == 'user' (or anything else)
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          );
         }
-
-        // 🔥 Navigate to dashboard
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-        );
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(data['detail'] ?? "Login failed ❌"),
@@ -85,29 +87,22 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
-      setState(() => isLoading = false);
-
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Connection Error ❌"),
+        SnackBar(
+          content: Text("Connection error: $e"),
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F7FF),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: primary),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      backgroundColor: bg,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -116,75 +111,86 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Card(
               elevation: 8,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(24),
-
                 child: Form(
                   key: _formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-
-                      // TITLE
+                      // ── HEADER ────────────────────────────────────────
                       Row(
                         children: [
                           CircleAvatar(
                             radius: 28,
                             backgroundColor: primary.withOpacity(0.1),
-                            child: Icon(Icons.person, color: primary),
+                            child: const Icon(Icons.lock_outline, color: primary),
                           ),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Welcome Back",
-                                  style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: primary)),
-                              const Text("Login to continue",
-                                  style: TextStyle(color: Colors.grey)),
+                              const Text(
+                                "Welcome Back",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: primary,
+                                ),
+                              ),
+                              Text(
+                                "Sign in to continue",
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
                             ],
-                          )
+                          ),
                         ],
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
 
-                      // EMAIL
+                      // ── EMAIL ─────────────────────────────────────────
                       TextFormField(
-                        controller: emailController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Email required";
-                          }
-                          if (!value.contains("@")) {
-                            return "Invalid email";
-                          }
+                        controller: email,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return "Email required";
+                          if (!v.contains("@")) return "Invalid email";
                           return null;
                         },
-                        decoration: inputStyle("Email", Icons.email),
+                        decoration: _inputStyle("Email", Icons.email_outlined),
                       ),
 
                       const SizedBox(height: 12),
 
-                      // PASSWORD
+                      // ── PASSWORD ──────────────────────────────────────
                       TextFormField(
-                        controller: passwordController,
-                        obscureText: true,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Password required";
-                          }
-                          return null;
-                        },
-                        decoration: inputStyle("Password", Icons.lock),
+                        controller: password,
+                        obscureText: obscurePassword,
+                        validator: (v) =>
+                            (v == null || v.isEmpty) ? "Password required" : null,
+                        decoration: _inputStyle(
+                          "Password",
+                          Icons.lock_outline,
+                        ).copyWith(
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: primary,
+                            ),
+                            onPressed: () =>
+                                setState(() => obscurePassword = !obscurePassword),
+                          ),
+                        ),
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
 
-                      // BUTTON
+                      // ── LOGIN BUTTON ──────────────────────────────────
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -193,14 +199,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: accent,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: isLoading
                               ? const CircularProgressIndicator(color: Colors.white)
                               : const Text(
                                   "Login",
                                   style: TextStyle(
-                                    color: Colors.white, // 👈 أبيض
+                                    color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
                                   ),
@@ -208,16 +215,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
 
+                      // ── SIGNUP LINK ───────────────────────────────────
                       TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const SignupScreen()),
-                          );
-                        },
-                        child: const Text("Don't have an account? Sign Up"),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const SignupScreen()),
+                        ),
+                        child: const Text(
+                          "Don't have an account? Sign Up",
+                          style: TextStyle(color: primary),
+                        ),
                       ),
                     ],
                   ),
@@ -230,7 +239,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  InputDecoration inputStyle(String hint, IconData icon) {
+  InputDecoration _inputStyle(String hint, IconData icon) {
     return InputDecoration(
       hintText: hint,
       prefixIcon: Icon(icon, color: primary),

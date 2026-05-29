@@ -15,62 +15,86 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final name = TextEditingController();
-  final email = TextEditingController();
-  final phone = TextEditingController();
+  final name     = TextEditingController();
+  final email    = TextEditingController();
+  final phone    = TextEditingController();
   final password = TextEditingController();
 
-  bool isLoading = false;
+  bool isLoading       = false;
+  bool obscurePassword = true;
+  String selectedRole  = 'user';   // 'user' or 'company'
+
+  static const primary = Color(0xFF5C6BC0);
+  static const accent  = Color(0xFF3F51B5);
+  static const bg      = Color(0xFFF0F7FF);
+
+  @override
+  void dispose() {
+    name.dispose();
+    email.dispose();
+    phone.dispose();
+    password.dispose();
+    super.dispose();
+  }
 
   Future<void> signup() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => isLoading = true);
 
-    final res = await http.post(
-      Uri.parse("http://10.0.2.2:8001/auth/signup"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "name": name.text.trim(),
-        "email": email.text.trim(),
-        "phone_number": phone.text.trim(),
-        "password": password.text.trim(),
-      }),
-    );
-
-    setState(() => isLoading = false);
-
-    final data = jsonDecode(res.body);
-
-    if (res.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Account created successfully ✅"),
-          backgroundColor: Colors.green,
-        ),
+    try {
+      final res = await http.post(
+        Uri.parse("http://127.0.0.1:8001/auth/signup"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "name":         name.text.trim(),
+          "email":        email.text.trim(),
+          "phone_number": phone.text.trim(),
+          "password":     password.text.trim(),
+          "role":         selectedRole,           // ← sends role to backend
+        }),
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(data['detail'] ?? "Signup failed ❌"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      final data = jsonDecode(res.body);
+
+      if (!mounted) return;
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Account created successfully ✅"),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(data['detail'] ?? "Signup failed ❌"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Connection error: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
   }
-
-  final primary = const Color(0xFF5C6BC0);
-  final accent = const Color(0xFF3F51B5);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F7FF),
+      backgroundColor: bg,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -89,19 +113,19 @@ class _SignupScreenState extends State<SignupScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
 
-                      // HEADER
+                      // ── HEADER ────────────────────────────────────────
                       Row(
                         children: [
                           CircleAvatar(
                             radius: 28,
                             backgroundColor: primary.withOpacity(0.1),
-                            child: Icon(Icons.person_add, color: primary),
+                            child: const Icon(Icons.person_add, color: primary),
                           ),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const Text(
                                 "Create Account",
                                 style: TextStyle(
                                   fontSize: 20,
@@ -109,66 +133,114 @@ class _SignupScreenState extends State<SignupScreen> {
                                   color: primary,
                                 ),
                               ),
-                              const Text(
+                              Text(
                                 "Sign up to continue",
-                                style: TextStyle(color: Colors.grey),
+                                style: TextStyle(color: Colors.grey[600]),
                               ),
                             ],
-                          )
+                          ),
                         ],
                       ),
 
                       const SizedBox(height: 20),
 
-                      // NAME
+                      // ── ACCOUNT TYPE TOGGLE ───────────────────────────
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F7FF),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: primary.withOpacity(0.2)),
+                        ),
+                        padding: const EdgeInsets.all(4),
+                        child: Row(
+                          children: [
+                            _RoleTab(
+                              label: "Job Seeker",
+                              icon: Icons.person_outline,
+                              selected: selectedRole == 'user',
+                              onTap: () => setState(() => selectedRole = 'user'),
+                            ),
+                            _RoleTab(
+                              label: "Company",
+                              icon: Icons.business_outlined,
+                              selected: selectedRole == 'company',
+                              onTap: () => setState(() => selectedRole = 'company'),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ── NAME ──────────────────────────────────────────
                       TextFormField(
                         controller: name,
                         validator: (v) =>
-                            v == null || v.isEmpty ? "Name required" : null,
-                        decoration: inputStyle("Full Name", Icons.person),
+                            (v == null || v.isEmpty) ? "Name required" : null,
+                        decoration: inputStyle(
+                          selectedRole == 'company'
+                              ? "Company Name"
+                              : "Full Name",
+                          selectedRole == 'company'
+                              ? Icons.business_outlined
+                              : Icons.person_outline,
+                        ),
                       ),
 
                       const SizedBox(height: 12),
 
-                      // EMAIL
+                      // ── EMAIL ─────────────────────────────────────────
                       TextFormField(
                         controller: email,
+                        keyboardType: TextInputType.emailAddress,
                         validator: (v) {
                           if (v == null || v.isEmpty) return "Email required";
                           if (!v.contains("@")) return "Invalid email";
                           return null;
                         },
-                        decoration: inputStyle("Email", Icons.email),
+                        decoration: inputStyle("Email", Icons.email_outlined),
                       ),
 
                       const SizedBox(height: 12),
 
-                      // PHONE
+                      // ── PHONE ─────────────────────────────────────────
                       TextFormField(
                         controller: phone,
                         keyboardType: TextInputType.phone,
                         validator: (v) =>
-                            v == null || v.isEmpty ? "Phone required" : null,
-                        decoration: inputStyle("Phone Number", Icons.phone),
+                            (v == null || v.isEmpty) ? "Phone required" : null,
+                        decoration: inputStyle("Phone Number", Icons.phone_outlined),
                       ),
 
                       const SizedBox(height: 12),
 
-                      // PASSWORD
+                      // ── PASSWORD ──────────────────────────────────────
                       TextFormField(
                         controller: password,
-                        obscureText: true,
+                        obscureText: obscurePassword,
                         validator: (v) {
                           if (v == null || v.isEmpty) return "Password required";
                           if (v.length < 6) return "Min 6 characters";
                           return null;
                         },
-                        decoration: inputStyle("Password", Icons.lock),
+                        decoration: inputStyle("Password", Icons.lock_outline)
+                            .copyWith(
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: primary,
+                            ),
+                            onPressed: () =>
+                                setState(() => obscurePassword = !obscurePassword),
+                          ),
+                        ),
                       ),
 
                       const SizedBox(height: 20),
 
-                      // BUTTON
+                      // ── SIGN UP BUTTON ────────────────────────────────
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -181,11 +253,12 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                           ),
                           child: isLoading
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white)
-                              : const Text(
-                                  "Sign Up",
-                                  style: TextStyle(
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : Text(
+                                  selectedRole == 'company'
+                                      ? "Create Company Account"
+                                      : "Sign Up",
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
@@ -198,8 +271,11 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text("Already have an account? Login"),
-                      )
+                        child: const Text(
+                          "Already have an account? Login",
+                          style: TextStyle(color: primary),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -220,6 +296,60 @@ class _SignupScreenState extends State<SignupScreen> {
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
+      ),
+    );
+  }
+}
+
+// ── Role tab widget ────────────────────────────────────────────────────────────
+class _RoleTab extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  static const primary = Color(0xFF5C6BC0);
+  static const accent  = Color(0xFF3F51B5);
+
+  const _RoleTab({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: selected ? Colors.white : primary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: selected ? Colors.white : primary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

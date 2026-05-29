@@ -236,7 +236,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     image: profilePictureUrl != null && profilePictureUrl!.isNotEmpty
                         ? DecorationImage(
                             image: NetworkImage(
-                              'http://10.0.2.2:8001/${profilePictureUrl!.replaceAll(r'\\', '/')}',
+                              'http://localhost:8001/${profilePictureUrl!.replaceAll(r'\\', '/')}',
                             ),
                             fit: BoxFit.cover,
                           )

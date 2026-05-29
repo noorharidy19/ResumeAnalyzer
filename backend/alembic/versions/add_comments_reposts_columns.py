@@ -24,3 +24,4 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column('posts', 'reposts_count')
     op.drop_column('posts', 'comments_count')
+    

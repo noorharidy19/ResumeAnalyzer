@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.schemas.user import SignupSchema
-from app.schemas.user import LoginSchema
+
+from app.schemas.user import SignupSchema, LoginSchema
 from app.services.auth import login_user, signup_user
+from app.utils.auth_utils import create_token
 from app.db.database import SessionLocal
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -16,34 +17,33 @@ def get_db():
         db.close()
 
 
-from fastapi import HTTPException
-
-@router.post("/signup")
+@router.post("/signup", status_code=201)
 def signup(data: SignupSchema, db: Session = Depends(get_db)):
     user = signup_user(data, db)
 
     if not user:
         raise HTTPException(status_code=400, detail="Email already exists")
 
-    return {"message": "created", "user_id": str(user.id)}
+    return {"message": "Account created successfully", "user_id": str(user.id)}
 
-from app.utils.auth_utils import create_token
 
 @router.post("/login")
 def login(data: LoginSchema, db: Session = Depends(get_db)):
     user = login_user(data, db)
 
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = create_token(str(user.id))
 
     return {
         "access_token": token,
+        "token_type":   "bearer",
         "user": {
-            "id": str(user.id),
-            "email": user.email,
-            "name": user.name,
-            "profile_picture": user.profile_picture
-        }
+            "id":              str(user.id),
+            "name":            user.name,
+            "email":           user.email,
+            "role":            user.role,
+            "profile_picture": user.profile_picture,
+        },
     }

@@ -66,7 +66,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
       
       // Get all users
       final usersResponse = await http.get(
-        Uri.parse('http://10.0.2.2:8001/api/users/all'),
+        Uri.parse('http://localhost:8001/api/users/all'),
         headers: {
           'Authorization': 'Bearer $token',
         },
