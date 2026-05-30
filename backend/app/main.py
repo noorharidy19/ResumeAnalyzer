@@ -1,15 +1,11 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-<<<<<<< HEAD
 from app.api import auth, connections, users, messages, posts, notifications, resume, cv_enhancement
-=======
-from fastapi.middleware.cors import CORSMiddleware  # ← move import up
-from app.api import auth, connections, users, messages, posts, notifications, resume
->>>>>>> 682891f9250cfcc965551e506d5d38534697d4e1
 import os
 from app.db.database import Base, engine
 from app.models.user import User
 from app.api import jobs, applications
+from fastapi.middleware.cors import CORSMiddleware
 
 Base.metadata.create_all(bind=engine)
 

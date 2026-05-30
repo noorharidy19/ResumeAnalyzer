@@ -22,7 +22,7 @@ class User(Base):
 
     password = Column(String, nullable=False)
 
-    role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
+    role = Column(Enum(UserRole), default=UserRole.user, nullable=False)
     
     cv_enhancements = relationship("CVEnhancement", back_populates="user", cascade="all, delete-orphan")
     

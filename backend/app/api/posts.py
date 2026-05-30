@@ -54,7 +54,7 @@ def create_post(
     db: Session = Depends(get_db)
 ):
     """Create a new post"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     post = PostService.create_post(user_id, post_data.content, db)
     
     # Get accepted connections (friends only)
@@ -95,7 +95,7 @@ def get_feed(
 ):
     """Get feed posts"""
     try:
-        user_id = current_user.get("id")
+        user_id = current_user.id
         posts, total_count = PostService.get_feed(user_id, limit, offset, db)
 
         # Format posts with engagement status
@@ -121,7 +121,7 @@ def get_my_posts(
     db: Session = Depends(get_db)
 ):
     """Get user's own posts"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     posts, total_count = PostService.get_user_posts(user_id, limit, offset, db)
     
     # Format posts with engagement status
@@ -139,7 +139,7 @@ def like_post(
     db: Session = Depends(get_db)
 ):
     """Toggle like on a post"""
-    user_id = current_user.get("id")
+    user_id =current_user.id
     post = PostService.get_post(post_id, db)
     
     if not post:
@@ -173,7 +173,7 @@ def add_comment(
     db: Session = Depends(get_db)
 ):
     """Add a comment to a post"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     post = PostService.get_post(post_id, db)
     
     if not post:
@@ -247,7 +247,7 @@ def delete_comment(
     db: Session = Depends(get_db)
 ):
     """Delete a comment"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     from app.models.post import Comment
     
     comment = db.query(Comment).filter(Comment.id == comment_id).first()
@@ -279,7 +279,7 @@ def repost(
     db: Session = Depends(get_db)
 ):
     """Toggle repost on a post"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     post = PostService.get_post(post_id, db)
     
     if not post:
@@ -312,7 +312,7 @@ def delete_post(
     db: Session = Depends(get_db)
 ):
     """Delete a post"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     post = PostService.get_post(post_id, db)
     
     if not post:

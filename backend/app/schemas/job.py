@@ -47,7 +47,7 @@ class JobUpdate(BaseModel):
 
 
 class CompanyBrief(BaseModel):
-    id:   int
+    id:   str
     name: str
 
     class Config:
@@ -82,7 +82,7 @@ class ApplicationStatusUpdate(BaseModel):
 
 
 class ApplicantBrief(BaseModel):
-    id:    int
+    id:    str
     name:  str
     email: str
 

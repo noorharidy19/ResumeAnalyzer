@@ -31,7 +31,7 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id           = Column(Integer, primary_key=True, index=True)
-    company_id   = Column(Integer, ForeignKey("users.id"), nullable=False)
+    company_id = Column(String, ForeignKey("users.id"), nullable=False)
     title        = Column(String(255), nullable=False)
     description  = Column(Text, nullable=False)
     requirements = Column(JSON, nullable=False, default=list)   # list[str]
@@ -54,7 +54,7 @@ class Application(Base):
 
     id                 = Column(Integer, primary_key=True, index=True)
     job_id             = Column(Integer, ForeignKey("jobs.id"), nullable=False)
-    user_id            = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id            = Column(String, ForeignKey("users.id"), nullable=False)
 
     # snapshot of the applicant's Phase 1 extraction at apply-time
     resume_snapshot    = Column(JSON, nullable=True)

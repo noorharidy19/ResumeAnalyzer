@@ -9,11 +9,11 @@ from app.schemas.job import JobCreate, JobUpdate, JobResponse
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 
 
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────     
 # Helper guard
 # ─────────────────────────────────────────────
 def require_company(current_user):
-    if getattr(current_user, "role", None) != "company":
+    if current_user.role.value != "company":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only company accounts can perform this action",
