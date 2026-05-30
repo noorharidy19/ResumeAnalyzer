@@ -17,11 +17,13 @@ void main() async {
   final token = prefs.getString('access_token');
   final email = prefs.getString('user_email');
   final name  = prefs.getString('user_name');
+  final userId = prefs.getString('user_id');
   final pic   = prefs.getString('profile_picture');
 
   if (token != null && email != null) {
     container.read(authProvider.notifier).restoreSession(
       token:          token,
+      userId:         userId ?? '', 
       userName:       name ?? '',
       userEmail:      email,
       profilePicture: pic,

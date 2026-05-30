@@ -12,6 +12,7 @@ final isLoadingProvider = StateProvider<bool>((ref) => false);
 // ─────────────────────────────────────────────
 class AuthState {
   final String? token;
+  final String? userId;
   final String? userName;
   final String? userEmail;
   final String? profilePicture;
@@ -19,6 +20,7 @@ class AuthState {
 
   const AuthState({
     this.token,
+    this.userId,
     this.userName,
     this.userEmail,
     this.profilePicture,
@@ -28,6 +30,7 @@ class AuthState {
   // copyWith: update one field, keep the rest unchanged
   AuthState copyWith({
     String? token,
+    String? userId,
     String? userName,
     String? userEmail,
     String? profilePicture,
@@ -35,6 +38,7 @@ class AuthState {
   }) {
     return AuthState(
       token:          token          ?? this.token,
+      userId:         userId         ?? this.userId,
       userName:       userName       ?? this.userName,
       userEmail:      userEmail      ?? this.userEmail,
       profilePicture: profilePicture ?? this.profilePicture,
@@ -51,12 +55,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   void login({
     required String token,
+    required String userId,
     required String userName,
     required String userEmail,
     String? profilePicture,
   }) {
     state = state.copyWith(
       token:          token,
+      userId:         userId,
       userName:       userName,
       userEmail:      userEmail,
       profilePicture: profilePicture,
@@ -72,6 +78,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(profilePicture: path);
   }
 
+  void updateUserName(String name) {
+  state = state.copyWith(userName: name);
+ }
+
   void updateName(String name) {
     state = state.copyWith(userName: name);
   }
@@ -83,12 +93,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // Called on app start to restore session from SharedPreferences
   void restoreSession({
     required String token,
+    required String userId, 
     required String userName,
     required String userEmail,
     String? profilePicture,
   }) {
     state = AuthState(
       token:          token,
+      userId:         userId,
       userName:       userName,
       userEmail:      userEmail,
       profilePicture: profilePicture,
