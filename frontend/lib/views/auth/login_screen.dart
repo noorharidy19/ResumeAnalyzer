@@ -57,6 +57,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         ref.read(authProvider.notifier).login(
           token:          data['access_token'] ?? '',
+          userId:         user?['id']          ?? '',
           userName:       user?['name']            ?? '',
           userEmail:      user?['email']           ?? '',
           profilePicture: user?['profile_picture'],
@@ -64,6 +65,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         try {
           final prefs = await SharedPreferences.getInstance();
+          if (user?['id'] != null) await prefs.setString('user_id', user!['id']);
           if (!mounted) return;
           await prefs.setString('access_token', data['access_token'] ?? '');
           await prefs.setString('user_role',    user?['role']  ?? 'user');

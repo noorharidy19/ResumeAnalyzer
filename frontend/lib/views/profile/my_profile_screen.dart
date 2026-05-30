@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/user_service.dart';
 import 'profile_picture_viewer.dart';
 import '../../utils/responsive_helper.dart';
+import '../../providers/app_providers.dart';
 
-class MyProfileScreen extends StatefulWidget {
+class MyProfileScreen extends ConsumerStatefulWidget {
   final void Function(String? newName, String? newPicture)? onProfileUpdated;
 
   const MyProfileScreen({super.key, this.onProfileUpdated});
 
   @override
-  State<MyProfileScreen> createState() => _MyProfileScreenState();
+  ConsumerState<MyProfileScreen> createState() => _MyProfileScreenState();
 }
 
-class _MyProfileScreenState extends State<MyProfileScreen> {
+class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
   final Color primary = const Color(0xFF7C8CF8);
-  final Color bg = const Color(0xFFF5F7FF);
+  final Color bg      = const Color(0xFFF5F7FF);
 
-  String? userName;
-  String? userEmail;
+  // phoneNumber stays local — authProvider doesn't store it
   String? phoneNumber;
-  String? profilePictureUrl;
   bool isEditing = false;
   bool isLoading = false;
 
@@ -31,10 +31,17 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   @override
   void initState() {
     super.initState();
-    nameController = TextEditingController();
+    nameController  = TextEditingController();
     emailController = TextEditingController();
     phoneController = TextEditingController();
-    _loadUserProfile();
+
+    // Read name and email synchronously from authProvider — no async needed
+    final auth = ref.read(authProvider);
+    nameController.text  = auth.userName  ?? '';
+    emailController.text = auth.userEmail ?? '';
+
+    // Only phone still needs a SharedPreferences read
+    _loadPhoneNumber();
   }
 
   @override
@@ -45,16 +52,11 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _loadUserProfile() async {
+  Future<void> _loadPhoneNumber() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
-      userName = prefs.getString("user_name") ?? '';
-      userEmail = prefs.getString("user_email") ?? '';
-      phoneNumber = prefs.getString("phone_number") ?? '';
-      profilePictureUrl = prefs.getString("profile_picture");
-
-      nameController.text = userName ?? '';
-      emailController.text = userEmail ?? '';
+      phoneNumber          = prefs.getString("phone_number") ?? '';
       phoneController.text = phoneNumber ?? '';
     });
   }
@@ -70,41 +72,44 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
 
     try {
-      final token = await SharedPreferences.getInstance().then((prefs) => prefs.getString('access_token'));
+      // Read token from authProvider instead of SharedPreferences
+      final token = ref.read(authProvider).token;
       if (token == null) throw Exception('Not authenticated');
 
       final result = await UserService.updateProfile(
-        name: nameController.text,
-        email: emailController.text,
+        name:        nameController.text,
+        email:       emailController.text,
         phoneNumber: phoneController.text,
       );
 
+      if (!mounted) return;
+
       if (!result.containsKey('error')) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_name', nameController.text);
+        await prefs.setString('user_name',    nameController.text);
         await prefs.setString('phone_number', phoneController.text);
+
+        if (!mounted) return;
+
+        // Update authProvider so dashboard name updates instantly everywhere
+        ref.read(authProvider.notifier).updateUserName(nameController.text);
 
         widget.onProfileUpdated?.call(nameController.text, null);
 
         setState(() {
-          userName = nameController.text;
           phoneNumber = phoneController.text;
-          isEditing = false;
+          isEditing   = false;
         });
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✓ Profile updated successfully'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✓ Profile updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
       } else {
         throw Exception(result['error']);
       }
@@ -118,16 +123,17 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         );
       }
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = ResponsiveHelper.isMobile(context);
-    final padding = ResponsiveHelper.getResponsivePadding(context);
+    // ref.watch — rebuilds whenever name or picture changes from anywhere
+    final auth = ref.watch(authProvider);
+
+    final isMobile    = ResponsiveHelper.isMobile(context);
+    final padding     = ResponsiveHelper.getResponsivePadding(context);
     final profileSize = isMobile ? 100.0 : 120.0;
 
     return Scaffold(
@@ -144,9 +150,8 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             onPressed: () {
               setState(() {
                 if (isEditing) {
-                  // Reset to original values
-                  nameController.text = userName ?? '';
-                  phoneController.text = phoneNumber ?? '';
+                  nameController.text  = auth.userName ?? '';
+                  phoneController.text = phoneNumber   ?? '';
                 }
                 isEditing = !isEditing;
               });
@@ -163,37 +168,34 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             // Profile Picture Section
             Center(
               child: Container(
-                width: profileSize,
+                width:  profileSize,
                 height: profileSize,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color:        Colors.white,
                   borderRadius: BorderRadius.circular(profileSize),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color:      Colors.black.withValues(alpha: 0.1),
                       blurRadius: 10,
-                      offset: const Offset(0, 2),
+                      offset:     const Offset(0, 2),
                     )
                   ],
-                  image: profilePictureUrl != null && profilePictureUrl!.isNotEmpty
+                  // reads from authProvider instead of local variable
+                  image: auth.profilePicture != null &&
+                          auth.profilePicture!.isNotEmpty
                       ? DecorationImage(
                           image: NetworkImage(
-<<<<<<< HEAD
-                            'http://192.168.1.5:8001/${profilePictureUrl!.replaceAll(r'\', '/')}',
-=======
-                            'http://localhost:8001/${profilePictureUrl!.replaceAll(r'\', '/')}',
->>>>>>> 682891f9250cfcc965551e506d5d38534697d4e1
+                            // URL kept exactly as teammate had it
+                            'http://localhost:8001/${auth.profilePicture!.replaceAll(r'\', '/')}',
                           ),
                           fit: BoxFit.cover,
                         )
                       : null,
                 ),
-                child: profilePictureUrl == null || profilePictureUrl!.isEmpty
-                    ? Icon(
-                        Icons.person,
-                        size: profileSize * 0.5,
-                        color: primary,
-                      )
+                child: auth.profilePicture == null ||
+                        auth.profilePicture!.isEmpty
+                    ? Icon(Icons.person,
+                        size: profileSize * 0.5, color: primary)
                     : null,
               ),
             ),
@@ -201,166 +203,78 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             Center(
               child: ElevatedButton.icon(
                 onPressed: () async {
-                  // open picture viewer dialog
                   await showDialog(
                     context: context,
                     builder: (_) => ProfilePictureViewer(
-                      profilePictureUrl: profilePictureUrl ?? '',
-                      userName: userName ?? '',
-                      userEmail: userEmail ?? '',
+                      profilePictureUrl: auth.profilePicture ?? '',
+                      userName:          auth.userName       ?? '',
+                      userEmail:         auth.userEmail      ?? '',
                       onPictureUpdated: () async {
-                        await _loadUserProfile();
                         final prefs = await SharedPreferences.getInstance();
+                        if (!mounted) return;
                         final newPic = prefs.getString('profile_picture');
+                        if (newPic != null) {
+                          // Update authProvider so picture refreshes everywhere
+                          ref.read(authProvider.notifier)
+                              .updateProfilePicture(newPic);
+                        }
                         widget.onProfileUpdated?.call(null, newPic);
                       },
                     ),
                   );
                 },
-                icon: const Icon(Icons.photo_library),
+                icon:  const Icon(Icons.photo_library),
                 label: const Text('Change Picture'),
                 style: ElevatedButton.styleFrom(backgroundColor: primary),
               ),
             ),
             SizedBox(height: isMobile ? 20 : 30),
 
-            // Profile Information
             Container(
               padding: EdgeInsets.all(isMobile ? 16 : 20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color:        Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color:      Colors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    offset:     const Offset(0, 2),
                   )
                 ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Name Field
-                  Text(
-                    'Full Name',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[700],
-                      fontSize: 12,
-                    ),
-                  ),
+                  // Name
+                  _fieldLabel('Full Name'),
                   const SizedBox(height: 8),
                   if (isEditing)
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(
-                        hintText: 'Enter your full name',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: primary, width: 2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
-                    )
+                    _editField(nameController, 'Enter your full name')
                   else
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[200]!),
-                      ),
-                      child: Text(
-                        userName ?? 'Not set',
-                        style: TextStyle(
-                          color: Colors.grey[800],
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
+                    _readonlyBox(auth.userName ?? 'Not set'),
                   const SizedBox(height: 20),
 
-                  // Email Field
-                  Text(
-                    'Email Address',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[700],
-                      fontSize: 12,
-                    ),
-                  ),
+                  // Email — always read-only
+                  _fieldLabel('Email Address'),
                   const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: Text(
-                      userEmail ?? 'Not set',
-                      style: TextStyle(
-                        color: Colors.grey[800],
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
+                  _readonlyBox(auth.userEmail ?? 'Not set'),
                   const SizedBox(height: 20),
 
-                  // Phone Number Field
-                  Text(
-                    'Phone Number',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[700],
-                      fontSize: 12,
-                    ),
-                  ),
+                  // Phone
+                  _fieldLabel('Phone Number'),
                   const SizedBox(height: 8),
                   if (isEditing)
                     TextField(
-                      controller: phoneController,
+                      controller:   phoneController,
                       keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        hintText: 'Enter your phone number',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: primary, width: 2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
+                      decoration:   _editDecoration('Enter your phone number'),
                     )
                   else
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[200]!),
-                      ),
-                      child: Text(
-                        phoneNumber ?? 'Not set',
-                        style: TextStyle(
-                          color: Colors.grey[800],
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
+                    _readonlyBox(phoneNumber ?? 'Not set'),
                   const SizedBox(height: 20),
 
-                  // Save Button (only visible in edit mode)
+                  // Save Button
                   if (isEditing)
                     SizedBox(
                       width: double.infinity,
@@ -371,22 +285,21 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         child: isLoading
                             ? const SizedBox(
                                 height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
+                                width:  20,
+                                child:  CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
                                 ),
                               )
-                            : const Text(
-                                'Save Changes',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
+                            : const Text('Save Changes',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold)),
                       ),
                     ),
                 ],
@@ -397,4 +310,43 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       ),
     );
   }
+
+  Widget _fieldLabel(String label) => Text(
+        label,
+        style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color:      Colors.grey[700],
+            fontSize:   12),
+      );
+
+  Widget _readonlyBox(String text) => Container(
+        width:   double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color:        Colors.grey[50],
+          borderRadius: BorderRadius.circular(12),
+          border:       Border.all(color: Colors.grey[200]!),
+        ),
+        child: Text(text,
+            style: TextStyle(color: Colors.grey[800], fontSize: 16)),
+      );
+
+  Widget _editField(TextEditingController ctrl, String hint) => TextField(
+        controller: ctrl,
+        decoration: _editDecoration(hint),
+      );
+
+  InputDecoration _editDecoration(String hint) => InputDecoration(
+        hintText: hint,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:   BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:   BorderSide(color: primary, width: 2),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      );
 }
