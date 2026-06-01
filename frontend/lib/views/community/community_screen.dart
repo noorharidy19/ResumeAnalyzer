@@ -10,9 +10,9 @@ class CommunityScreen extends StatefulWidget {
 }
 
 class _CommunityScreenState extends State<CommunityScreen> {
-  final Color primary = const Color(0xFF7C8CF8);
-  final Color bg = const Color(0xFFF5F7FF);
-  
+  // getter — always reads from live theme
+  Color get primary => Theme.of(context).primaryColor;
+
   List<Map<String, dynamic>> pendingRequests = [];
   bool isLoading = true;
 
@@ -24,10 +24,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   Future<void> _loadPendingRequests() async {
     final result = await ConnectionService.getPendingRequests();
-    
     setState(() {
       if (result.containsKey('requests')) {
-        pendingRequests = List<Map<String, dynamic>>.from(result['requests'] ?? []);
+        pendingRequests =
+            List<Map<String, dynamic>>.from(result['requests'] ?? []);
       }
       isLoading = false;
     });
@@ -35,22 +35,19 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   void _acceptRequest(String connectionId, int index) async {
     final result = await ConnectionService.acceptConnection(connectionId);
-    
     if (mounted) {
       if (result.containsKey('message')) {
-        setState(() {
-          pendingRequests.removeAt(index);
-        });
+        setState(() => pendingRequests.removeAt(index));
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Connection accepted! 🎉'),
+          const SnackBar(
+            content:         Text('Connection accepted! 🎉'),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${result['error'] ?? 'Failed to accept'}'),
+            content:         Text('Error: ${result['error'] ?? 'Failed to accept'}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -60,22 +57,19 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   void _rejectRequest(String connectionId, int index) async {
     final result = await ConnectionService.rejectConnection(connectionId);
-    
     if (mounted) {
       if (result.containsKey('message')) {
-        setState(() {
-          pendingRequests.removeAt(index);
-        });
+        setState(() => pendingRequests.removeAt(index));
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Connection rejected'),
+          const SnackBar(
+            content:         Text('Connection rejected'),
             backgroundColor: Colors.orange,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${result['error'] ?? 'Failed to reject'}'),
+            content:         Text('Error: ${result['error'] ?? 'Failed to reject'}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -85,17 +79,19 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = ResponsiveHelper.isMobile(context);
-    final padding = ResponsiveHelper.getResponsivePadding(context);
+    final isMobile  = ResponsiveHelper.isMobile(context);
+    final padding   = ResponsiveHelper.getResponsivePadding(context);
+    final cardColor = Theme.of(context).cardColor;
+    final hintColor = Theme.of(context).textTheme.bodySmall?.color;
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Community'),
+        title:           const Text('Community'),
         backgroundColor: primary,
-        elevation: 0,
+        elevation:       0,
         foregroundColor: Colors.white,
-        centerTitle: isMobile,
+        centerTitle:     isMobile,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -104,38 +100,36 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.inbox,
-                        size: isMobile ? 48 : 64,
-                        color: Colors.grey[300],
-                      ),
+                      Icon(Icons.inbox,
+                          size:  isMobile ? 48 : 64,
+                          color: hintColor),
                       const SizedBox(height: 16),
                       Text(
                         'No pending requests',
                         style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: isMobile ? 14 : 16,
-                        ),
+                            color:    hintColor,
+                            fontSize: isMobile ? 14 : 16),
                       ),
                     ],
                   ),
                 )
               : ListView.builder(
-                  padding: padding,
-                  itemCount: pendingRequests.length,
+                  padding:     padding,
+                  itemCount:   pendingRequests.length,
                   itemBuilder: (context, index) {
                     final request = pendingRequests[index];
-                    final sender = request['sender'] ?? {};
+                    final sender  = request['sender'] ?? {};
 
                     return Container(
-                      margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
+                      margin: EdgeInsets.only(
+                          bottom: isMobile ? 8 : 12),
                       padding: EdgeInsets.all(isMobile ? 12 : 16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color:        cardColor,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black12.withOpacity(0.05),
+                            color:      Colors.black.withValues(alpha: 0.05),
                             blurRadius: 10,
                           )
                         ],
@@ -146,14 +140,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           Row(
                             children: [
                               CircleAvatar(
-                                radius: isMobile ? 18 : 24,
-                                backgroundColor: primary.withOpacity(0.2),
+                                radius:          isMobile ? 18 : 24,
+                                backgroundColor: primary.withValues(alpha: 0.2),
                                 child: Text(
                                   (sender['name'] ?? 'U')[0],
                                   style: TextStyle(
-                                    color: primary,
+                                    color:      primary,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: isMobile ? 12 : 14,
+                                    fontSize:   isMobile ? 12 : 14,
                                   ),
                                 ),
                               ),
@@ -166,13 +160,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                       sender['name'] ?? 'Unknown User',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: isMobile ? 14 : 16,
+                                        fontSize:   isMobile ? 14 : 16,
                                       ),
                                     ),
                                     Text(
                                       sender['email'] ?? '',
                                       style: TextStyle(
-                                        color: Colors.grey[600],
+                                        color:    hintColor,
                                         fontSize: isMobile ? 11 : 13,
                                       ),
                                       maxLines: 1,
@@ -187,9 +181,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           Text(
                             'wants to connect with you',
                             style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: isMobile ? 12 : 14,
-                            ),
+                                color:    hintColor,
+                                fontSize: isMobile ? 12 : 14),
                           ),
                           SizedBox(height: isMobile ? 8 : 12),
                           if (isMobile)
@@ -197,26 +190,63 @@ class _CommunityScreenState extends State<CommunityScreen> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                        color: primary.withValues(alpha: 0.5)),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10)),
+                                  ),
                                   onPressed: () =>
                                       _rejectRequest(request['id'], index),
-                                  child: const Text('Decline'),
+                                  child: Text('Decline',
+                                      style: TextStyle(color: primary)),
                                 ),
                                 const SizedBox(height: 8),
                                 ElevatedButton(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: primary,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10)),
                                   ),
                                   onPressed: () =>
                                       _acceptRequest(request['id'], index),
-                                  child: const Text(
-                                    'Accept',
-                                    style: TextStyle(color: Colors.white),
+                                  child: const Text('Accept',
+                                      style: TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            )
+                          else
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                        color: primary.withValues(alpha: 0.5)),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10)),
                                   ),
+                                  onPressed: () =>
+                                      _rejectRequest(request['id'], index),
+                                  child: Text('Decline',
+                                      style: TextStyle(color: primary)),
+                                ),
+                                const SizedBox(width: 12),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primary,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  onPressed: () =>
+                                      _acceptRequest(request['id'], index),
+                                  child: const Text('Accept',
+                                      style: TextStyle(color: Colors.white)),
                                 ),
                               ],
                             ),
-                          ],
-                        ),
+                        ],
+                      ),
                     );
                   },
                 ),

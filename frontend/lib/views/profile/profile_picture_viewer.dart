@@ -35,25 +35,23 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
     final ImagePicker picker = ImagePicker();
     try {
       final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
+        source:    ImageSource.gallery,
+        maxWidth:  1024,
         maxHeight: 1024,
       );
 
       if (image != null) {
-        setState(() {
-          isLoading = true;
-        });
+        setState(() => isLoading = true);
 
-        final bytes = await image.readAsBytes();
-        final result = await UserService.uploadProfilePicture(bytes, image.name);
+        final bytes  = await image.readAsBytes();
+        final result =
+            await UserService.uploadProfilePicture(bytes, image.name);
 
         if (!mounted) return;
 
         if (!result.containsKey('error')) {
           final profilePicture = result['profile_picture'] as String?;
 
-          // Save to SharedPreferences
           final prefs = await SharedPreferences.getInstance();
           if (profilePicture != null) {
             await prefs.setString('profile_picture', profilePicture);
@@ -61,28 +59,25 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
 
           setState(() {
             currentImageUrl = profilePicture ?? widget.profilePictureUrl;
-            isLoading = false;
+            isLoading       = false;
           });
 
-          widget.onPictureUpdated(); // notify parent to refresh profile data
+          widget.onPictureUpdated();
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Profile picture updated! ✓'),
+                content:         Text('Profile picture updated! ✓'),
                 backgroundColor: Colors.green,
               ),
             );
           }
         } else {
-          setState(() {
-            isLoading = false;
-          });
-
+          setState(() => isLoading = false);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Error: ${result['error']}'),
+                content:         Text('Error: ${result['error']}'),
                 backgroundColor: Colors.red,
               ),
             );
@@ -90,14 +85,11 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
         }
       }
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-
+      setState(() => isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content:         Text('Error: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -107,23 +99,26 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primary = const Color(0xFF7C8CF8);
-    final screenWidth = MediaQuery.of(context).size.width;
-    // image size: use 80% of screen width on small screens, clamp to 360 on larger screens
-    final double imgSize = screenWidth * 0.8 > 360 ? 360 : screenWidth * 0.8;
+    final primary      = Theme.of(context).primaryColor;
+    final cardColor    = Theme.of(context).cardColor;
+    final hintColor    = Theme.of(context).textTheme.bodySmall?.color;
+    final dividerColor = Theme.of(context).dividerColor;
+    final screenWidth  = MediaQuery.of(context).size.width;
+    final double imgSize =
+        screenWidth * 0.8 > 360 ? 360 : screenWidth * 0.8;
 
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(20),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color:        cardColor,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
+            // ── Header ───────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -135,7 +130,7 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
                       Text(
                         widget.userName,
                         style: const TextStyle(
-                          fontSize: 18,
+                          fontSize:   18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -143,25 +138,21 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
                         widget.userEmail,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color:    hintColor,
                         ),
                       ),
                     ],
                   ),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: Icon(
-                      Icons.close,
-                      color: Colors.grey[600],
-                      size: 24,
-                    ),
+                    child: Icon(Icons.close, color: hintColor, size: 24),
                   ),
                 ],
               ),
             ),
             const Divider(height: 1),
 
-            // Profile Picture
+            // ── Profile picture ──────────────────────────────────────
             Padding(
               padding: const EdgeInsets.all(20),
               child: ClipRRect(
@@ -169,32 +160,32 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
                 child: Stack(
                   children: [
                     Image.network(
-                      'http://192.168.1.5:8001/${currentImageUrl}',
-                      width: imgSize,
+                      'http://192.168.1.5:8001/$currentImageUrl',
+                      width:  imgSize,
                       height: imgSize,
-                      fit: BoxFit.cover,
+                      fit:    BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          width: imgSize,
+                          width:  imgSize,
                           height: imgSize,
                           decoration: BoxDecoration(
-                            color: primary.withOpacity(0.1),
+                            color:        primary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
                             Icons.image_not_supported,
                             color: primary,
-                            size: imgSize * 0.18,
+                            size:  imgSize * 0.18,
                           ),
                         );
                       },
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
                         return Container(
-                          width: imgSize,
+                          width:  imgSize,
                           height: imgSize,
                           decoration: BoxDecoration(
-                            color: Colors.grey[200],
+                            color:        dividerColor,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Center(
@@ -213,10 +204,9 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
                       Positioned.fill(
                         child: Container(
                           color: Colors.black.withOpacity(0.3),
-                          child: Center(
+                          child: const Center(
                             child: CircularProgressIndicator(
-                              color: Colors.white,
-                            ),
+                                color: Colors.white),
                           ),
                         ),
                       ),
@@ -225,17 +215,19 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
               ),
             ),
 
-            // Action Buttons (responsive: row on wide screens, column on narrow screens)
+            // ── Action buttons ───────────────────────────────────────
             Padding(
               padding: const EdgeInsets.all(16),
               child: LayoutBuilder(builder: (context, constraints) {
                 final isNarrow = constraints.maxWidth < 420;
-                final buttonSpacing = SizedBox(width: isNarrow ? 0 : 12, height: isNarrow ? 12 : 0);
+                final buttonSpacing = SizedBox(
+                    width:  isNarrow ? 0 : 12,
+                    height: isNarrow ? 12 : 0);
 
                 final changeBtn = ElevatedButton.icon(
                   onPressed: isLoading ? null : _uploadNewPicture,
-                  icon: const Icon(Icons.cloud_upload),
-                  label: const Text('Change Picture'),
+                  icon:      const Icon(Icons.cloud_upload),
+                  label:     const Text('Change Picture'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primary,
                     foregroundColor: Colors.white,
@@ -246,42 +238,46 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
                   onPressed: isLoading
                       ? null
                       : () async {
-                          setState(() {
-                            isLoading = true;
-                          });
-                          final result = await UserService.deleteProfilePicture();
+                          setState(() => isLoading = true);
+                          final result =
+                              await UserService.deleteProfilePicture();
                           if (!mounted) return;
-                          setState(() {
-                            isLoading = false;
-                          });
+                          setState(() => isLoading = false);
 
                           if (!result.containsKey('error')) {
-                            // remove from prefs
-                            final prefs = await SharedPreferences.getInstance();
+                            final prefs =
+                                await SharedPreferences.getInstance();
                             await prefs.remove('profile_picture');
-
                             widget.onPictureUpdated();
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Profile picture deleted'), backgroundColor: Colors.green),
+                                const SnackBar(
+                                  content: Text('Profile picture deleted'),
+                                  backgroundColor: Colors.green,
+                                ),
                               );
+                              Navigator.pop(context);
                             }
-                            Navigator.pop(context);
                           } else {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error: ${result['error']}'), backgroundColor: Colors.red),
+                                SnackBar(
+                                  content: Text(
+                                      'Error: ${result['error']}'),
+                                  backgroundColor: Colors.red,
+                                ),
                               );
                             }
                           }
                         },
-                  icon: const Icon(Icons.delete_forever),
+                  icon:  const Icon(Icons.delete_forever),
                   label: const Text('Delete'),
                 );
 
                 final closeBtn = OutlinedButton.icon(
-                  onPressed: isLoading ? null : () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                  onPressed:
+                      isLoading ? null : () => Navigator.pop(context),
+                  icon:  const Icon(Icons.close),
                   label: const Text('Close'),
                 );
 
@@ -289,7 +285,7 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       SizedBox(width: double.infinity, child: changeBtn),
                       buttonSpacing,
                       SizedBox(width: double.infinity, child: deleteBtn),
@@ -299,7 +295,6 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
                   );
                 }
 
-                // wide layout: row with spacing
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

@@ -4,7 +4,7 @@ import 'certificates_screen.dart';
 import 'rewritten_cv_tab.dart';
 
 class CVEnhancementScreen extends StatefulWidget {
-  final String analysisId;
+  final String  analysisId;
   final String? targetJob;
 
   const CVEnhancementScreen({
@@ -23,7 +23,7 @@ class _CVEnhancementScreenState extends State<CVEnhancementScreen>
 
   late TabController _tabController;
   Map<String, dynamic>? _data;
-  bool _loading = true;
+  bool _loading     = true;
   bool _downloading = false;
   String? _error;
 
@@ -58,12 +58,12 @@ class _CVEnhancementScreenState extends State<CVEnhancementScreen>
       }
 
       setState(() {
-        _data = result;
+        _data    = result;
         _loading = false;
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error   = e.toString();
         _loading = false;
       });
     }
@@ -78,7 +78,7 @@ class _CVEnhancementScreenState extends State<CVEnhancementScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('PDF saved to ${file.path}'),
+          content:         Text('PDF saved to ${file.path}'),
           backgroundColor: Colors.green.shade700,
           action: SnackBarAction(label: 'OK', onPressed: () {}),
         ),
@@ -87,7 +87,7 @@ class _CVEnhancementScreenState extends State<CVEnhancementScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Download failed: $e'),
+          content:         Text('Download failed: $e'),
           backgroundColor: Colors.red.shade700,
         ),
       );
@@ -99,6 +99,7 @@ class _CVEnhancementScreenState extends State<CVEnhancementScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // AppBar inherits backgroundColor from theme — no override needed
       appBar: AppBar(
         title: const Text('CV Enhancement'),
         actions: [
@@ -108,14 +109,14 @@ class _CVEnhancementScreenState extends State<CVEnhancementScreen>
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     child: Center(
                       child: SizedBox(
-                        width: 20,
+                        width:  20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child:  CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
                   )
                 : IconButton(
-                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    icon:    const Icon(Icons.picture_as_pdf_outlined),
                     tooltip: 'Download PDF',
                     onPressed: _downloadPDF,
                   ),
@@ -135,67 +136,73 @@ class _CVEnhancementScreenState extends State<CVEnhancementScreen>
   }
 
   Widget _buildBody() {
-  if (_loading) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 20),
-          Text(
-            'Enhancing your CV with AI…\nThis may take up to 30 seconds.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
-
-  if (_error != null) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+    if (_loading) {
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                setState(() { _loading = true; _error = null; });
-                _load();
-              },
-              child: const Text('Retry'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 20),
+            Text(
+              'Enhancing your CV with AI…\nThis may take up to 30 seconds.',
+              textAlign: TextAlign.center,
+              // Use theme color instead of hardcoded Colors.grey
+              style: TextStyle(
+                  color: Theme.of(context).textTheme.bodySmall?.color),
             ),
           ],
         ),
-      ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(_error!, textAlign: TextAlign.center),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() { _loading = true; _error = null; });
+                  _load();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Handle both flat and nested { phase4: {...} } structures
+    final phase4 =
+        (_data!['phase4'] as Map<String, dynamic>?) ?? _data!;
+
+    final rewrittenSections =
+        phase4['rewritten_sections'] as Map<String, dynamic>?;
+    final certificates = phase4['certificates'] as List<dynamic>?;
+
+    if (rewrittenSections == null || certificates == null) {
+      return const Center(
+          child: Text(
+              'Enhancement data is incomplete. Please retry.'));
+    }
+
+    return TabBarView(
+      controller: _tabController,
+      children: [
+        RewrittenCVTab(data: rewrittenSections),
+        CertificatesScreen(
+          certificates: certificates
+              .map((e) => e as Map<String, dynamic>)
+              .toList(),
+        ),
+      ],
     );
   }
-
-  // ✅ Handle both flat and nested { phase4: {...} } structures
-  final phase4 = (_data!['phase4'] as Map<String, dynamic>?) ?? _data!;
-
-  final rewrittenSections = phase4['rewritten_sections'] as Map<String, dynamic>?;
-  final certificates     = phase4['certificates']        as List<dynamic>?;
-
-  if (rewrittenSections == null || certificates == null) {
-    return const Center(child: Text('Enhancement data is incomplete. Please retry.'));
-  }
-
-  return TabBarView(
-    controller: _tabController,
-    children: [
-      RewrittenCVTab(data: rewrittenSections),
-      CertificatesScreen(
-        certificates: certificates
-            .map((e) => e as Map<String, dynamic>)
-            .toList(),
-      ),
-    ],
-  );
 }
-    }

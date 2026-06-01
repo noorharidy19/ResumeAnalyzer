@@ -15,8 +15,9 @@ class MessagesScreen extends ConsumerStatefulWidget {
 
 class _MessagesScreenState extends ConsumerState<MessagesScreen>
     with TickerProviderStateMixin {
-  final Color primary = const Color(0xFF7C8CF8);
-  final Color bg      = const Color(0xFFF5F7FF);
+  // primary and cardColor are getters — always read from the live theme
+  Color get primary   => Theme.of(context).primaryColor;
+  Color get cardColor => Theme.of(context).cardColor;
 
   List<Map<String, dynamic>> acceptedConnections = [];
   List<Map<String, dynamic>> sentRequests        = [];
@@ -30,10 +31,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-
-    // Get userId from authProvider — replaces async JWT decode
-    currentUserId = ref.read(authProvider).userId;
-
+    currentUserId  = ref.read(authProvider).userId;
     _loadAllConnections();
   }
 
@@ -42,8 +40,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
     _tabController.dispose();
     super.dispose();
   }
-
-  // REMOVED: _loadCurrentUserId() — no longer needed
 
   Future<void> _loadAllConnections() async {
     try {
@@ -104,25 +100,32 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
   }
 
   void _openChat(Map<String, dynamic> connection) {
-    final otherUser = _getOtherUser(connection);
+    final otherUser    = _getOtherUser(connection);
     if (otherUser == null) return;
 
     final TextEditingController messageController = TextEditingController();
     String? connectionId = connection['id'];
 
+    // capture theme values before entering the dialog builder
+    final dialogCardColor = cardColor;
+    final dialogPrimary   = primary;
+    final hintColor       = Theme.of(context).textTheme.bodySmall?.color;
+    final dividerColor    = Theme.of(context).dividerColor;
+    final receivedBubble  = Theme.of(context).colorScheme.surface;
+    final receivedText    = Theme.of(context).textTheme.bodyMedium?.color;
+
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
           return FutureBuilder<Map<String, dynamic>>(
             future: MessageService.getChatHistory(connectionId ?? ''),
-            builder: (context, snapshot) {
+            builder: (dialogContext, snapshot) {
               List<Message> messages    = [];
               int           unreadCount = 0;
 
-              if (snapshot.hasData &&
-                  !snapshot.data!.containsKey('error')) {
+              if (snapshot.hasData && !snapshot.data!.containsKey('error')) {
                 messages    = snapshot.data!['messages']     ?? [];
                 unreadCount = snapshot.data!['unread_count'] ?? 0;
 
@@ -137,26 +140,27 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
 
               return Dialog(
                 insetPadding: const EdgeInsets.all(16),
+                backgroundColor: dialogCardColor,
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
-                    color:        Colors.white,
+                    color:        dialogCardColor,
                   ),
                   constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.8,
-                    maxWidth:  MediaQuery.of(context).size.width  * 0.9,
+                    maxHeight: MediaQuery.of(dialogContext).size.height * 0.8,
+                    maxWidth:  MediaQuery.of(dialogContext).size.width  * 0.9,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Header — all teammate's styling preserved
+                      // ── Chat header (gradient — intentional branding) ──
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              primary,
-                              primary.withValues(alpha: 0.7)
+                              dialogPrimary,
+                              dialogPrimary.withValues(alpha: 0.7),
                             ],
                             begin: Alignment.topLeft,
                             end:   Alignment.bottomRight,
@@ -170,11 +174,10 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                           children: [
                             CircleAvatar(
                               radius:          24,
-                              backgroundColor: Colors.white
-                                  .withValues(alpha: 0.3),
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.3),
                               child: Text(
-                                (otherUser['name'] ?? 'U')[0]
-                                    .toUpperCase(),
+                                (otherUser['name'] ?? 'U')[0].toUpperCase(),
                                 style: const TextStyle(
                                   color:      Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -185,8 +188,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     otherUser['name'] ?? 'User',
@@ -224,29 +226,29 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                             IconButton(
                               icon: const Icon(Icons.close,
                                   color: Colors.white),
-                              onPressed: () => Navigator.pop(context),
+                              onPressed: () => Navigator.pop(dialogContext),
                             ),
                           ],
                         ),
                       ),
-                      // Chat area
+
+                      // ── Chat area ─────────────────────────────────────
                       Expanded(
                         child: snapshot.connectionState ==
                                 ConnectionState.waiting
                             ? Center(
                                 child: Column(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     CircularProgressIndicator(
                                       valueColor:
                                           AlwaysStoppedAnimation<Color>(
-                                              primary),
+                                              dialogPrimary),
                                     ),
                                     const SizedBox(height: 12),
                                     Text('Loading messages...',
-                                        style: TextStyle(
-                                            color: Colors.grey[600])),
+                                        style:
+                                            TextStyle(color: hintColor)),
                                   ],
                                 ),
                               )
@@ -256,95 +258,75 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        Icon(
-                                          Icons.chat_bubble_outline,
-                                          size:  48,
-                                          color: Colors.grey[300],
-                                        ),
+                                        Icon(Icons.chat_bubble_outline,
+                                            size:  48,
+                                            color: hintColor),
                                         const SizedBox(height: 12),
                                         Text('No messages yet',
                                             style: TextStyle(
-                                                color:    Colors.grey[500],
+                                                color:    hintColor,
                                                 fontSize: 14)),
                                         const SizedBox(height: 4),
                                         Text('Start the conversation!',
                                             style: TextStyle(
-                                                color:    Colors.grey[400],
+                                                color:    hintColor,
                                                 fontSize: 12)),
                                       ],
                                     ),
                                   )
                                 : ListView.builder(
-                                    padding:
-                                        const EdgeInsets.all(16),
+                                    padding:   const EdgeInsets.all(16),
                                     itemCount: messages.length,
-                                    itemBuilder: (context, index) {
+                                    itemBuilder: (dialogContext, index) {
                                       final message = messages[index];
-                                      final isCurrentUserMessage =
-                                          message.senderId ==
-                                              currentUserId;
+                                      final isMe =
+                                          message.senderId == currentUserId;
 
                                       return Align(
-                                        alignment: isCurrentUserMessage
+                                        alignment: isMe
                                             ? Alignment.centerRight
                                             : Alignment.centerLeft,
                                         child: Container(
-                                          margin: const EdgeInsets
-                                              .only(bottom: 12),
+                                          margin: const EdgeInsets.only(
+                                              bottom: 12),
                                           constraints: BoxConstraints(
-                                            maxWidth:
-                                                MediaQuery.of(context)
-                                                        .size
-                                                        .width *
-                                                    0.65,
+                                            maxWidth: MediaQuery.of(
+                                                        dialogContext)
+                                                    .size
+                                                    .width *
+                                                0.65,
                                           ),
-                                          padding:
-                                              const EdgeInsets
-                                                  .symmetric(
-                                                      horizontal: 14,
-                                                      vertical:   10),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 14, vertical: 10),
                                           decoration: BoxDecoration(
-                                            color: isCurrentUserMessage
+                                            color: isMe
                                                 ? null
-                                                : Colors.grey[200],
-                                            gradient:
-                                                isCurrentUserMessage
-                                                    ? LinearGradient(
-                                                        colors: [
-                                                          primary,
-                                                          primary.withValues(
-                                                              alpha:
-                                                                  0.8),
-                                                        ],
-                                                      )
-                                                    : null,
+                                                : receivedBubble,
+                                            gradient: isMe
+                                                ? LinearGradient(colors: [
+                                                    dialogPrimary,
+                                                    dialogPrimary.withValues(
+                                                        alpha: 0.8),
+                                                  ])
+                                                : null,
                                             borderRadius:
-                                                BorderRadius.circular(
-                                                    16),
+                                                BorderRadius.circular(16),
                                           ),
                                           child: Column(
-                                            crossAxisAlignment:
-                                                isCurrentUserMessage
-                                                    ? CrossAxisAlignment
-                                                        .end
-                                                    : CrossAxisAlignment
-                                                        .start,
+                                            crossAxisAlignment: isMe
+                                                ? CrossAxisAlignment.end
+                                                : CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 message.content,
                                                 style: TextStyle(
-                                                  color:
-                                                      isCurrentUserMessage
-                                                          ? Colors.white
-                                                          : Colors
-                                                              .grey[800],
-                                                  fontSize: 15,
-                                                  fontWeight:
-                                                      message.isRead
-                                                          ? FontWeight
-                                                              .normal
-                                                          : FontWeight
-                                                              .bold,
+                                                  color: isMe
+                                                      ? Colors.white
+                                                      : receivedText,
+                                                  fontSize:   15,
+                                                  fontWeight: message.isRead
+                                                      ? FontWeight.normal
+                                                      : FontWeight.bold,
                                                 ),
                                               ),
                                               const SizedBox(height: 6),
@@ -352,14 +334,11 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                                 _formatMessageTime(
                                                     message.createdAt),
                                                 style: TextStyle(
-                                                  color:
-                                                      isCurrentUserMessage
-                                                          ? Colors.white
-                                                              .withValues(
-                                                                  alpha:
-                                                                      0.75)
-                                                          : Colors
-                                                              .grey[600],
+                                                  color: isMe
+                                                      ? Colors.white
+                                                          .withValues(
+                                                              alpha: 0.75)
+                                                      : hintColor,
                                                   fontSize:   12,
                                                   fontWeight:
                                                       FontWeight.w500,
@@ -372,13 +351,13 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                     },
                                   ),
                       ),
-                      // Input area
+
+                      // ── Input area ────────────────────────────────────
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           border: Border(
-                              top: BorderSide(
-                                  color: Colors.grey[200]!)),
+                              top: BorderSide(color: dividerColor)),
                         ),
                         child: Row(
                           children: [
@@ -387,24 +366,20 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                 controller: messageController,
                                 decoration: InputDecoration(
                                   hintText:  'Type a message...',
-                                  hintStyle: TextStyle(
-                                      color: Colors.grey[400]),
+                                  hintStyle: TextStyle(color: hintColor),
                                   border: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(24),
-                                    borderSide: BorderSide(
-                                        color: Colors.grey[300]!),
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide:
+                                        BorderSide(color: dividerColor),
                                   ),
                                   focusedBorder: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(24),
+                                    borderRadius: BorderRadius.circular(24),
                                     borderSide:
-                                        BorderSide(color: primary),
+                                        BorderSide(color: dialogPrimary),
                                   ),
                                   contentPadding:
                                       const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical:   10),
+                                          horizontal: 16, vertical: 10),
                                 ),
                                 maxLines: null,
                               ),
@@ -412,34 +387,28 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                             const SizedBox(width: 8),
                             Container(
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    primary,
-                                    primary.withValues(alpha: 0.8)
-                                  ],
-                                ),
+                                gradient: LinearGradient(colors: [
+                                  dialogPrimary,
+                                  dialogPrimary.withValues(alpha: 0.8),
+                                ]),
                                 shape: BoxShape.circle,
                               ),
                               child: IconButton(
                                 icon: const Icon(Icons.send,
                                     color: Colors.white),
                                 onPressed: () async {
-                                  if (messageController
-                                          .text.isNotEmpty &&
+                                  if (messageController.text.isNotEmpty &&
                                       connectionId != null) {
-                                    final content =
-                                        messageController.text;
+                                    final content = messageController.text;
                                     messageController.clear();
 
                                     final result =
-                                        await MessageService
-                                            .sendMessage(
+                                        await MessageService.sendMessage(
                                       connectionId,
                                       content,
                                     );
 
-                                    if (!result
-                                        .containsKey('error')) {
+                                    if (!result.containsKey('error')) {
                                       final newMessage = Message(
                                         id:         result['id'],
                                         senderId:   result['sender_id'],
@@ -451,19 +420,15 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                         sender:   result['sender'],
                                         receiver: result['receiver'],
                                       );
-
                                       setDialogState(() {});
-
                                       if (mounted) {
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
                                           const SnackBar(
-                                            content: Text(
-                                                'Message sent! ✓'),
-                                            backgroundColor:
-                                                Colors.green,
-                                            duration: Duration(
-                                                milliseconds: 800),
+                                            content: Text('Message sent! ✓'),
+                                            backgroundColor: Colors.green,
+                                            duration:
+                                                Duration(milliseconds: 800),
                                           ),
                                         );
                                       }
@@ -474,8 +439,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                           SnackBar(
                                             content: Text(
                                                 'Error: ${result['error']}'),
-                                            backgroundColor:
-                                                Colors.red,
+                                            backgroundColor: Colors.red,
                                           ),
                                         );
                                       }
@@ -509,8 +473,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
         dateTime.isUtc ? dateTime : dateTime.toUtc();
     final nowUtc     = DateTime.now().toUtc();
     final difference = nowUtc.difference(messageTimeUtc);
-    final cairoTime  =
-        messageTimeUtc.add(const Duration(hours: 2));
+    final cairoTime  = messageTimeUtc.add(const Duration(hours: 2));
 
     if (difference.inSeconds < 0)  return 'now';
     if (difference.inSeconds < 60) return 'now';
@@ -527,9 +490,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
           '${cairoTime.hour.toString().padLeft(2, '0')}:'
           '${cairoTime.minute.toString().padLeft(2, '0')}';
     }
-    if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    }
+    if (difference.inDays < 7) return '${difference.inDays} days ago';
     return '${cairoTime.day}/${cairoTime.month} '
         '${cairoTime.hour.toString().padLeft(2, '0')}:'
         '${cairoTime.minute.toString().padLeft(2, '0')}';
@@ -537,8 +498,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
 
   void _acceptRequest(int index) async {
     final request = receivedRequests[index];
-    final result  =
-        await ConnectionService.acceptConnection(request['id']);
+    final result  = await ConnectionService.acceptConnection(request['id']);
 
     if (mounted && result.containsKey('message')) {
       setState(() {
@@ -556,8 +516,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
 
   void _rejectRequest(int index) async {
     final request = receivedRequests[index];
-    final result  =
-        await ConnectionService.rejectConnection(request['id']);
+    final result  = await ConnectionService.rejectConnection(request['id']);
 
     if (mounted && result.containsKey('message')) {
       setState(() => receivedRequests.removeAt(index));
@@ -580,10 +539,12 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
     final otherUser = _getOtherUser(connection);
     if (otherUser == null) return const SizedBox.shrink();
 
+    final hintColor = Theme.of(context).textTheme.bodySmall?.color;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color:        Colors.white,
+        color:        cardColor,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -625,8 +586,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                         decoration: BoxDecoration(
                           color:  Colors.green[400],
                           shape:  BoxShape.circle,
-                          border: Border.all(
-                              color: Colors.white, width: 2),
+                          border: Border.all(color: cardColor, width: 2),
                         ),
                       ),
                     ),
@@ -640,14 +600,12 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                       Text(
                         otherUser['name'] ?? 'Unknown User',
                         style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize:   15),
+                            fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         otherUser['email'] ?? '',
-                        style: TextStyle(
-                            color: Colors.grey[500], fontSize: 13),
+                        style: TextStyle(color: hintColor, fontSize: 13),
                       ),
                     ],
                   ),
@@ -656,18 +614,15 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                   Container(
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          primary,
-                          primary.withValues(alpha: 0.7)
-                        ],
-                      ),
+                      gradient: LinearGradient(colors: [
+                        primary,
+                        primary.withValues(alpha: 0.7),
+                      ]),
                       shape: BoxShape.circle,
                     ),
                     padding: const EdgeInsets.all(6),
                     child: Text(
-                      (unreadCounts[connection['id']] ?? 0)
-                          .toString(),
+                      (unreadCounts[connection['id']] ?? 0).toString(),
                       style: const TextStyle(
                           color:      Colors.white,
                           fontSize:   12,
@@ -712,7 +667,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                     ],
                   )
                 else
-                  Icon(Icons.chevron_right, color: Colors.grey[400]),
+                  Icon(Icons.chevron_right, color: hintColor),
               ],
             ),
           ),
@@ -723,10 +678,11 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = ResponsiveHelper.isMobile(context);
+    final isMobile  = ResponsiveHelper.isMobile(context);
+    final hintColor = Theme.of(context).textTheme.bodySmall?.color;
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title:           const Text('Connections'),
         backgroundColor: primary,
@@ -759,8 +715,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.arrow_circle_up_outlined,
-                        size: 20),
+                    const Icon(Icons.arrow_circle_up_outlined, size: 20),
                     const SizedBox(height: 2),
                     Text('Sent',
                         style: TextStyle(
@@ -773,8 +728,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.arrow_circle_down_outlined,
-                        size: 20),
+                    const Icon(Icons.arrow_circle_down_outlined, size: 20),
                     const SizedBox(height: 2),
                     Text('Received',
                         style: TextStyle(
@@ -792,24 +746,22 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
           : TabBarView(
               controller: _tabController,
               children: [
-                // Accepted Connections
+                // ── Accepted ─────────────────────────────────────────
                 acceptedConnections.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.person_add,
-                                size: 64, color: Colors.grey[300]),
+                                size: 64, color: hintColor),
                             const SizedBox(height: 16),
                             Text('No accepted connections',
                                 style: TextStyle(
-                                    color:    Colors.grey[600],
-                                    fontSize: 16)),
+                                    color: hintColor, fontSize: 16)),
                             const SizedBox(height: 8),
                             Text('Accept requests to start messaging',
                                 style: TextStyle(
-                                    color:    Colors.grey[500],
-                                    fontSize: 14)),
+                                    color: hintColor, fontSize: 14)),
                           ],
                         ),
                       )
@@ -822,19 +774,17 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                 canMessage: true),
                       ),
 
-                // Sent Requests
+                // ── Sent ─────────────────────────────────────────────
                 sentRequests.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.send,
-                                size: 64, color: Colors.grey[300]),
+                            Icon(Icons.send, size: 64, color: hintColor),
                             const SizedBox(height: 16),
                             Text('No sent requests',
                                 style: TextStyle(
-                                    color:    Colors.grey[600],
-                                    fontSize: 16)),
+                                    color: hintColor, fontSize: 16)),
                           ],
                         ),
                       )
@@ -845,19 +795,17 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                             _buildConnectionCard(sentRequests[index]),
                       ),
 
-                // Received Requests
+                // ── Received ─────────────────────────────────────────
                 receivedRequests.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.mail,
-                                size: 64, color: Colors.grey[300]),
+                            Icon(Icons.mail, size: 64, color: hintColor),
                             const SizedBox(height: 16),
                             Text('No pending requests',
                                 style: TextStyle(
-                                    color:    Colors.grey[600],
-                                    fontSize: 16)),
+                                    color: hintColor, fontSize: 16)),
                           ],
                         ),
                       )

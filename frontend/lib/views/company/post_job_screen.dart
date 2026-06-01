@@ -19,13 +19,13 @@ class _PostJobScreenState extends State<PostJobScreen> {
 
   final List<String> _requirements = [];
   String? _selectedJobType;
-  bool _isSubmitting = false;
+  bool    _isSubmitting = false;
 
-  static const primary = Color(0xFF5C6BC0);
-  static const accent  = Color(0xFF3F51B5);
-  static const bg      = Color(0xFFF0F7FF);
-
-  static const _jobTypes = ['Full-time', 'Part-time', 'Remote', 'Internship', 'Contract'];
+  static const _primary  = Color(0xFF5C6BC0);
+  static const _accent   = Color(0xFF3F51B5);
+  static const _jobTypes = [
+    'Full-time', 'Part-time', 'Remote', 'Internship', 'Contract'
+  ];
 
   @override
   void dispose() {
@@ -39,10 +39,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
   void _addRequirement() {
     final text = _reqCtrl.text.trim();
     if (text.isEmpty) return;
-    setState(() {
-      _requirements.add(text);
-      _reqCtrl.clear();
-    });
+    setState(() { _requirements.add(text); _reqCtrl.clear(); });
   }
 
   Future<void> _submit() async {
@@ -50,7 +47,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
     if (_requirements.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Add at least one requirement'),
+          content:         Text('Add at least one requirement'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -64,13 +61,15 @@ class _PostJobScreenState extends State<PostJobScreen> {
         title:        _titleCtrl.text.trim(),
         description:  _descCtrl.text.trim(),
         requirements: _requirements,
-        location:     _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
-        jobType:      _selectedJobType,
+        location: _locationCtrl.text.trim().isEmpty
+            ? null
+            : _locationCtrl.text.trim(),
+        jobType: _selectedJobType,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Job posted successfully! ✅'),
+            content:         Text('Job posted successfully! ✅'),
             backgroundColor: Colors.green,
           ),
         );
@@ -91,19 +90,24 @@ class _PostJobScreenState extends State<PostJobScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark    = Theme.of(context).brightness == Brightness.dark;
+    final fillColor = isDark
+        ? Theme.of(context).colorScheme.surface
+        : Colors.white;
+    final cardColor = Theme.of(context).cardColor;
+
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: accent,
-        elevation: 0,
+        backgroundColor: _accent,
+        elevation:       0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon:      const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Post a Job',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        title: const Text('Post a Job',
+            style: TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: Form(
         key: _formKey,
@@ -113,10 +117,12 @@ class _PostJobScreenState extends State<PostJobScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
 
-              // ── Card wrapper for fields ─────────────────────────────
+              // ── Main fields card ────────────────────────────────
               Card(
                 elevation: 3,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                color:     cardColor,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
@@ -126,8 +132,13 @@ class _PostJobScreenState extends State<PostJobScreen> {
                       _Label('Job Title *'),
                       TextFormField(
                         controller: _titleCtrl,
-                        decoration: _inputStyle('e.g. Senior Flutter Developer', Icons.title),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Title is required' : null,
+                        decoration: _inputStyle(
+                            'e.g. Senior Flutter Developer',
+                            Icons.title,
+                            fillColor),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Title is required'
+                            : null,
                       ),
 
                       const SizedBox(height: 16),
@@ -135,19 +146,20 @@ class _PostJobScreenState extends State<PostJobScreen> {
                       _Label('Job Description *'),
                       TextFormField(
                         controller: _descCtrl,
-                        maxLines: 5,
+                        maxLines:   5,
                         decoration: _inputStyle(
                           'Describe the role, responsibilities...',
                           Icons.description_outlined,
+                          fillColor,
                         ).copyWith(alignLabelWithHint: true),
-                        validator: (v) => (v == null || v.trim().length < 10)
-                            ? 'Please add a description'
-                            : null,
+                        validator: (v) =>
+                            (v == null || v.trim().length < 10)
+                                ? 'Please add a description'
+                                : null,
                       ),
 
                       const SizedBox(height: 16),
 
-                      // Location + Type row
                       Row(
                         children: [
                           Expanded(
@@ -157,7 +169,10 @@ class _PostJobScreenState extends State<PostJobScreen> {
                                 _Label('Location'),
                                 TextFormField(
                                   controller: _locationCtrl,
-                                  decoration: _inputStyle('e.g. Cairo, Egypt', Icons.location_on_outlined),
+                                  decoration: _inputStyle(
+                                      'e.g. Cairo, Egypt',
+                                      Icons.location_on_outlined,
+                                      fillColor),
                                 ),
                               ],
                             ),
@@ -170,20 +185,31 @@ class _PostJobScreenState extends State<PostJobScreen> {
                                 _Label('Job Type'),
                                 DropdownButtonFormField<String>(
                                   value: _selectedJobType,
-                                  hint: const Text('Select', style: TextStyle(fontSize: 13)),
+                                  hint: const Text('Select',
+                                      style: TextStyle(fontSize: 13)),
+                                  dropdownColor: cardColor,
                                   decoration: InputDecoration(
-                                    prefixIcon: const Icon(Icons.work_outline, color: primary),
-                                    filled: true,
-                                    fillColor: Colors.white,
+                                    prefixIcon: const Icon(
+                                        Icons.work_outline,
+                                        color: _primary),
+                                    filled:    true,
+                                    fillColor: fillColor,
                                     border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius:
+                                          BorderRadius.circular(12),
                                       borderSide: BorderSide.none,
                                     ),
                                   ),
                                   items: _jobTypes
-                                      .map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13))))
+                                      .map((t) => DropdownMenuItem(
+                                            value: t,
+                                            child: Text(t,
+                                                style: const TextStyle(
+                                                    fontSize: 13)),
+                                          ))
                                       .toList(),
-                                  onChanged: (v) => setState(() => _selectedJobType = v),
+                                  onChanged: (v) =>
+                                      setState(() => _selectedJobType = v),
                                 ),
                               ],
                             ),
@@ -197,19 +223,26 @@ class _PostJobScreenState extends State<PostJobScreen> {
 
               const SizedBox(height: 16),
 
-              // ── Requirements card ───────────────────────────────────
+              // ── Requirements card ────────────────────────────────
               Card(
                 elevation: 3,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                color:     cardColor,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _Label('Requirements *'),
-                      const Text(
+                      Text(
                         'Add skills or qualifications one by one',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.color),
                       ),
                       const SizedBox(height: 10),
                       Row(
@@ -220,6 +253,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
                               decoration: _inputStyle(
                                 'e.g. Python, 2+ years experience',
                                 Icons.add_circle_outline,
+                                fillColor,
                               ),
                               onFieldSubmitted: (_) => _addRequirement(),
                             ),
@@ -228,7 +262,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
                           ElevatedButton(
                             onPressed: _addRequirement,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: accent,
+                              backgroundColor: _accent,
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12)),
                               padding: const EdgeInsets.symmetric(
@@ -242,17 +276,27 @@ class _PostJobScreenState extends State<PostJobScreen> {
                       if (_requirements.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         Wrap(
-                          spacing: 8,
+                          spacing:    8,
                           runSpacing: 6,
-                          children: _requirements.asMap().entries.map((e) => Chip(
-                            label: Text(e.value,
-                                style: const TextStyle(fontSize: 12, color: primary)),
-                            deleteIcon: const Icon(Icons.close, size: 16, color: primary),
-                            onDeleted: () =>
-                                setState(() => _requirements.removeAt(e.key)),
-                            backgroundColor: primary.withOpacity(0.08),
-                            side: BorderSide(color: primary.withOpacity(0.2)),
-                          )).toList(),
+                          children: _requirements
+                              .asMap()
+                              .entries
+                              .map((e) => Chip(
+                                    label: Text(e.value,
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color:    _primary)),
+                                    deleteIcon: const Icon(Icons.close,
+                                        size: 16, color: _primary),
+                                    onDeleted: () => setState(
+                                        () => _requirements.removeAt(e.key)),
+                                    backgroundColor:
+                                        _primary.withValues(alpha: 0.08),
+                                    side: BorderSide(
+                                        color:
+                                            _primary.withValues(alpha: 0.2)),
+                                  ))
+                              .toList(),
                         ),
                       ],
                     ],
@@ -262,14 +306,14 @@ class _PostJobScreenState extends State<PostJobScreen> {
 
               const SizedBox(height: 24),
 
-              // ── Submit button ───────────────────────────────────────
+              // ── Submit ───────────────────────────────────────────
               SizedBox(
-                width: double.infinity,
+                width:  double.infinity,
                 height: 52,
                 child: ElevatedButton(
                   onPressed: _isSubmitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: accent,
+                    backgroundColor: _accent,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),
                   ),
@@ -278,9 +322,9 @@ class _PostJobScreenState extends State<PostJobScreen> {
                       : const Text(
                           'Post Job',
                           style: TextStyle(
-                            color: Colors.white,
+                            color:      Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize:   16,
                           ),
                         ),
                 ),
@@ -294,16 +338,17 @@ class _PostJobScreenState extends State<PostJobScreen> {
     );
   }
 
-  InputDecoration _inputStyle(String hint, IconData icon) {
+  InputDecoration _inputStyle(
+      String hint, IconData icon, Color fillColor) {
     return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(fontSize: 13),
-      prefixIcon: Icon(icon, color: primary),
-      filled: true,
-      fillColor: Colors.white,
+      hintText:   hint,
+      hintStyle:  const TextStyle(fontSize: 13),
+      prefixIcon: Icon(icon, color: _primary),
+      filled:     true,
+      fillColor:  fillColor,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderSide:   BorderSide.none,
       ),
     );
   }
@@ -312,6 +357,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
 class _Label extends StatelessWidget {
   final String text;
   const _Label(this.text);
+
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 6),
@@ -319,8 +365,8 @@ class _Label extends StatelessWidget {
           text,
           style: const TextStyle(
             fontWeight: FontWeight.w600,
-            fontSize: 13,
-            color: Color(0xFF3F51B5),
+            fontSize:   13,
+            color:      Color(0xFF3F51B5),
           ),
         ),
       );

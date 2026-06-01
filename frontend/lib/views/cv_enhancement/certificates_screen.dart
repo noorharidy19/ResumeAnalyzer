@@ -8,7 +8,8 @@ class CertificatesScreen extends StatelessWidget {
 
   Future<void> _openUrl(BuildContext context, String url) async {
     final uri = Uri.tryParse(url);
-    if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    if (uri == null ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not open: $url')),
@@ -18,9 +19,9 @@ class CertificatesScreen extends StatelessWidget {
   }
 
   Color _priorityColor(int priority) {
-    if (priority == 1) return const Color(0xFFDC2626);   // Red — top pick
-    if (priority == 2) return const Color(0xFFD97706);   // Amber — strong
-    return const Color(0xFF6B7280);                      // Gray — good to have
+    if (priority == 1) return const Color(0xFFDC2626); // Red — top pick
+    if (priority == 2) return const Color(0xFFD97706); // Amber — strong
+    return const Color(0xFF6B7280);                    // Gray — good to have
   }
 
   String _priorityLabel(int priority) {
@@ -32,53 +33,63 @@ class CertificatesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sorted = [...certificates]
-      ..sort((a, b) => (a['priority'] as int).compareTo(b['priority'] as int));
+      ..sort((a, b) =>
+          (a['priority'] as int).compareTo(b['priority'] as int));
+
+    // Resolved once per build — avoids calling Theme inside a loop
+    final hintColor  = Theme.of(context).textTheme.bodySmall?.color;
+    final bodyColor  = Theme.of(context).textTheme.bodyMedium?.color;
+    final cardColor  = Theme.of(context).colorScheme.surface;
+    final dividerClr = Theme.of(context).dividerColor;
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding:   const EdgeInsets.all(16),
       itemCount: sorted.length,
       itemBuilder: (context, i) {
-        final cert = sorted[i];
+        final cert     = sorted[i];
         final priority = cert['priority'] as int? ?? i + 1;
-        final color = _priorityColor(priority);
+        final color    = _priorityColor(priority);
 
         return Container(
           margin: const EdgeInsets.only(bottom: 14),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
+            color:        cardColor,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Theme.of(context).dividerColor),
+            border:       Border.all(color: dividerClr),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color:      Colors.black.withValues(alpha: 0.04),
                 blurRadius: 8,
-                offset: const Offset(0, 2),
+                offset:     const Offset(0, 2),
               ),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top bar with priority badge
+              // ── Priority badge bar ──────────────────────────────────
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.08),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                  color: color.withValues(alpha: 0.08),
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(14)),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: color,
+                        color:        color,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         _priorityLabel(priority),
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
+                          color:      Colors.white,
+                          fontSize:   11,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -87,17 +98,14 @@ class CertificatesScreen extends StatelessWidget {
                     Expanded(
                       child: Text(
                         cert['provider'] as String? ?? '',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
+                        style: TextStyle(fontSize: 12, color: hintColor),
                       ),
                     ),
                   ],
                 ),
               ),
 
-              // Body
+              // ── Body ────────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.all(14),
                 child: Column(
@@ -106,18 +114,13 @@ class CertificatesScreen extends StatelessWidget {
                     Text(
                       cert['name'] as String? ?? '',
                       style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
+                          fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       cert['why'] as String? ?? '',
                       style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade700,
-                        height: 1.5,
-                      ),
+                          fontSize: 13, color: bodyColor, height: 1.5),
                     ),
                     const SizedBox(height: 14),
                   ],

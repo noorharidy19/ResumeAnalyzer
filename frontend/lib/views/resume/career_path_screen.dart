@@ -10,65 +10,45 @@ class CareerPathScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFF5C6BC0);
+    final primary   = Theme.of(context).primaryColor;
+    final hintColor = Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey;
 
-    final resumeFeedback = phase3['resume_feedback'] as Map<String, dynamic>? ?? {};
-    final careerPath = phase3['career_path'] as Map<String, dynamic>? ?? {};
+    final resumeFeedback     = phase3['resume_feedback']     as Map<String, dynamic>? ?? {};
+    final careerPath         = phase3['career_path']         as Map<String, dynamic>? ?? {};
     final finalRecommendation =
         phase3['final_recommendation'] as String? ?? 'No recommendation available';
 
-    final overallScore = resumeFeedback['overall_score'] as int? ?? 0;
-    final strengths = resumeFeedback['strengths'] as List<dynamic>? ?? [];
-    final weaknesses = resumeFeedback['weaknesses'] as List<dynamic>? ?? [];
-    final improvements = resumeFeedback['improvements'] as List<dynamic>? ?? [];
-    final summary = resumeFeedback['summary'] as String? ?? '';
+    final overallScore   = resumeFeedback['overall_score'] as int?          ?? 0;
+    final strengths      = resumeFeedback['strengths']     as List<dynamic>? ?? [];
+    final weaknesses     = resumeFeedback['weaknesses']    as List<dynamic>? ?? [];
+    final improvements   = resumeFeedback['improvements']  as List<dynamic>? ?? [];
+    final summary        = resumeFeedback['summary']       as String?        ?? '';
 
-    final recommendedPath = careerPath['recommended_path'] as String? ?? '';
-    final reason = careerPath['reason'] as String? ?? '';
-    final alternativePaths =
-        careerPath['alternative_paths'] as List<dynamic>? ?? [];
+    final recommendedPath   = careerPath['recommended_path']   as String?        ?? '';
+    final reason            = careerPath['reason']             as String?        ?? '';
+    final alternativePaths  = careerPath['alternative_paths']  as List<dynamic>? ?? [];
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         // Resume Score
-        _buildScoreCard(overallScore, primary),
+        _buildScoreCard(overallScore, primary, hintColor),
         const SizedBox(height: 16),
         // Resume Summary
         if (summary.isNotEmpty)
-          _buildSectionCard(
-            'Resume Summary',
-            summary,
-            primary,
-            Icons.description,
-          ),
+          _buildSectionCard('Resume Summary', summary, primary, Icons.description),
         const SizedBox(height: 16),
         // Strengths
         if (strengths.isNotEmpty)
-          _buildListCard(
-            'Your Strengths',
-            strengths.cast<String>(),
-            Colors.green,
-            Icons.star,
-          ),
+          _buildListCard('Your Strengths', strengths.cast<String>(), Colors.green, Icons.star),
         const SizedBox(height: 16),
         // Weaknesses
         if (weaknesses.isNotEmpty)
-          _buildListCard(
-            'Areas to Improve',
-            weaknesses.cast<String>(),
-            Colors.orange,
-            Icons.flag,
-          ),
+          _buildListCard('Areas to Improve', weaknesses.cast<String>(), Colors.orange, Icons.flag),
         const SizedBox(height: 16),
         // Improvements
         if (improvements.isNotEmpty)
-          _buildListCard(
-            'Recommended Improvements',
-            improvements.cast<String>(),
-            primary,
-            Icons.lightbulb,
-          ),
+          _buildListCard('Recommended Improvements', improvements.cast<String>(), primary, Icons.lightbulb),
         const SizedBox(height: 16),
         // Career Path
         if (recommendedPath.isNotEmpty) ...[
@@ -77,16 +57,12 @@ class CareerPathScreen extends StatelessWidget {
             reason,
             alternativePaths.cast<String>(),
             primary,
+            hintColor,
           ),
           const SizedBox(height: 16),
         ],
         // Final Recommendation
-        _buildSectionCard(
-          'Final Recommendation',
-          finalRecommendation,
-          primary,
-          Icons.recommend,
-        ),
+        _buildSectionCard('Final Recommendation', finalRecommendation, primary, Icons.recommend),
         const SizedBox(height: 16),
         // Action Items
         _buildActionItems(primary),
@@ -94,7 +70,7 @@ class CareerPathScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildScoreCard(int score, Color primary) {
+  Widget _buildScoreCard(int score, Color primary, Color hintColor) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -108,11 +84,11 @@ class CareerPathScreen extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            const Text(
+            Text(
               'Resume Score',
               style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
+                fontSize:   14,
+                color:      hintColor,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -121,10 +97,10 @@ class CareerPathScreen extends StatelessWidget {
               alignment: Alignment.center,
               children: [
                 SizedBox(
-                  width: 120,
+                  width:  120,
                   height: 120,
                   child: CircularProgressIndicator(
-                    value: score / 100,
+                    value:       score / 100,
                     strokeWidth: 8,
                     backgroundColor: Colors.grey.withOpacity(0.2),
                     valueColor: AlwaysStoppedAnimation(
@@ -137,9 +113,9 @@ class CareerPathScreen extends StatelessWidget {
                 Text(
                   '$score%',
                   style: TextStyle(
-                    fontSize: 32,
+                    fontSize:   32,
                     fontWeight: FontWeight.bold,
-                    color: primary,
+                    color:      primary,
                   ),
                 ),
               ],
@@ -147,10 +123,7 @@ class CareerPathScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               _getScoreLabel(score),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -179,9 +152,9 @@ class CareerPathScreen extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize:   16,
                     fontWeight: FontWeight.bold,
-                    color: primary,
+                    color:      primary,
                   ),
                 ),
               ],
@@ -189,10 +162,7 @@ class CareerPathScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               content,
-              style: const TextStyle(
-                fontSize: 13,
-                height: 1.6,
-              ),
+              style: const TextStyle(fontSize: 13, height: 1.6),
             ),
           ],
         ),
@@ -221,9 +191,9 @@ class CareerPathScreen extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize:   16,
                     fontWeight: FontWeight.bold,
-                    color: color,
+                    color:      color,
                   ),
                 ),
               ],
@@ -240,10 +210,8 @@ class CareerPathScreen extends StatelessWidget {
                             Icon(Icons.check_circle, size: 16, color: color),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Text(
-                                item,
-                                style: const TextStyle(fontSize: 13),
-                              ),
+                              child: Text(item,
+                                  style: const TextStyle(fontSize: 13)),
                             ),
                           ],
                         ),
@@ -261,6 +229,7 @@ class CareerPathScreen extends StatelessWidget {
     String reason,
     List<String> alternatives,
     Color primary,
+    Color hintColor,
   ) {
     return Card(
       elevation: 2,
@@ -276,10 +245,7 @@ class CareerPathScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 const Text(
                   'Recommended Career Path',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -287,7 +253,7 @@ class CareerPathScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: primary.withOpacity(0.1),
+                color:        primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -296,31 +262,28 @@ class CareerPathScreen extends StatelessWidget {
                   Text(
                     path,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize:   16,
                       fontWeight: FontWeight.bold,
-                      color: primary,
+                      color:      primary,
                     ),
                   ),
                   const SizedBox(height: 8),
                   if (reason.isNotEmpty)
                     Text(
                       reason,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        height: 1.5,
-                      ),
+                      style: const TextStyle(fontSize: 12, height: 1.5),
                     ),
                 ],
               ),
             ),
             if (alternatives.isNotEmpty) ...[
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Alternative Paths:',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize:   12,
                   fontWeight: FontWeight.w500,
-                  color: Colors.grey,
+                  color:      hintColor,
                 ),
               ),
               const SizedBox(height: 8),
@@ -333,10 +296,8 @@ class CareerPathScreen extends StatelessWidget {
                             children: [
                               const Text('→ '),
                               Expanded(
-                                child: Text(
-                                  alt,
-                                  style: const TextStyle(fontSize: 12),
-                                ),
+                                child: Text(alt,
+                                    style: const TextStyle(fontSize: 12)),
                               ),
                             ],
                           ),
@@ -365,21 +326,18 @@ class CareerPathScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 const Text(
                   'Next Steps',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            _buildActionItem(1, 'Complete the Learning Path', Colors.blue),
+            _buildActionItem(1, 'Complete the Learning Path',    Colors.blue),
             const SizedBox(height: 8),
             _buildActionItem(2, 'Build projects with new skills', Colors.green),
             const SizedBox(height: 8),
-            _buildActionItem(3, 'Update resume after learning', Colors.orange),
+            _buildActionItem(3, 'Update resume after learning',   Colors.orange),
             const SizedBox(height: 8),
-            _buildActionItem(4, 'Apply to matched positions', Colors.red),
+            _buildActionItem(4, 'Apply to matched positions',     Colors.red),
           ],
         ),
       ),
@@ -391,28 +349,25 @@ class CareerPathScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 24,
+          width:  24,
           height: 24,
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color:        color.withOpacity(0.2),
             borderRadius: BorderRadius.circular(50),
           ),
           alignment: Alignment.center,
           child: Text(
             number.toString(),
             style: TextStyle(
-              fontSize: 12,
+              fontSize:   12,
               fontWeight: FontWeight.bold,
-              color: color,
+              color:      color,
             ),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 13),
-          ),
+          child: Text(text, style: const TextStyle(fontSize: 13)),
         ),
       ],
     );

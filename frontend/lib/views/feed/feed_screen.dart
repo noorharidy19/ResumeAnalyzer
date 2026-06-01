@@ -10,8 +10,8 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  final Color primary = const Color(0xFF7C8CF8);
-  final Color bg      = const Color(0xFFF5F7FF);
+  // primary is a getter so it always reads from the current theme
+  Color get primary => Theme.of(context).primaryColor;
 
   List<Post> posts      = [];
   bool isLoading        = true;
@@ -77,7 +77,6 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Future<void> _createPost() async {
     if (postController.text.isEmpty) return;
-
     final content = postController.text;
     postController.clear();
 
@@ -165,7 +164,14 @@ class _FeedScreenState extends State<FeedScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) {
+      backgroundColor: Theme.of(context).cardColor,
+      builder: (sheetContext) {
+        // capture theme colors before entering the builder
+        final cardColor    = Theme.of(context).cardColor;
+        final dividerColor = Theme.of(context).dividerColor;
+        final primaryColor = Theme.of(context).primaryColor;
+        final hintColor    = Theme.of(context).textTheme.bodySmall?.color;
+
         return FractionallySizedBox(
           heightFactor: 0.75,
           child: Column(
@@ -173,7 +179,7 @@ class _FeedScreenState extends State<FeedScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardColor,
                   boxShadow: [
                     BoxShadow(
                       color:      Colors.black.withValues(alpha: 0.05),
@@ -190,7 +196,7 @@ class _FeedScreenState extends State<FeedScreen> {
                             fontSize: 16, fontWeight: FontWeight.bold)),
                     IconButton(
                       icon:      const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(sheetContext),
                     ),
                   ],
                 ),
@@ -199,12 +205,11 @@ class _FeedScreenState extends State<FeedScreen> {
                 child: FutureBuilder<Map<String, dynamic>>(
                   future: PostService.getComments(post.id),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
                       return Center(
                         child: CircularProgressIndicator(
                           valueColor:
-                              AlwaysStoppedAnimation<Color>(primary),
+                              AlwaysStoppedAnimation<Color>(primaryColor),
                         ),
                       );
                     }
@@ -218,8 +223,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     }
 
                     final comments =
-                        snapshot.data?['comments'] as List<Comment>? ??
-                            [];
+                        snapshot.data?['comments'] as List<Comment>? ?? [];
 
                     return ListView.builder(
                       itemCount:   comments.length,
@@ -234,14 +238,13 @@ class _FeedScreenState extends State<FeedScreen> {
                                 children: [
                                   CircleAvatar(
                                     radius:          16,
-                                    backgroundColor: primary
-                                        .withValues(alpha: 0.2),
+                                    backgroundColor:
+                                        primaryColor.withValues(alpha: 0.2),
                                     child: Text(
-                                      (comment.creator?['name'] ??
-                                              'U')[0]
+                                      (comment.creator?['name'] ?? 'U')[0]
                                           .toUpperCase(),
                                       style: TextStyle(
-                                        color:      primary,
+                                        color:      primaryColor,
                                         fontWeight: FontWeight.bold,
                                         fontSize:   12,
                                       ),
@@ -254,8 +257,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          comment.creator?['name'] ??
-                                              'Unknown',
+                                          comment.creator?['name'] ?? 'Unknown',
                                           style: const TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize:   12),
@@ -263,7 +265,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                         Text(
                                           _formatTime(comment.createdAt),
                                           style: TextStyle(
-                                              color:    Colors.grey[500],
+                                              color:    hintColor,
                                               fontSize: 11),
                                         ),
                                       ],
@@ -275,8 +277,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               Text(comment.content,
                                   style: const TextStyle(
                                       fontSize: 13, height: 1.4)),
-                              Divider(
-                                  color: Colors.grey[200], height: 16),
+                              Divider(color: dividerColor, height: 16),
                             ],
                           ),
                         );
@@ -290,11 +291,10 @@ class _FeedScreenState extends State<FeedScreen> {
                   left:   16,
                   right:  16,
                   top:    12,
-                  bottom:
-                      MediaQuery.of(context).viewInsets.bottom + 12,
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 12,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: cardColor,
                   boxShadow: [
                     BoxShadow(
                       color:      Colors.black.withValues(alpha: 0.05),
@@ -310,15 +310,14 @@ class _FeedScreenState extends State<FeedScreen> {
                         controller: commentController,
                         decoration: InputDecoration(
                           hintText:  'Add a comment...',
-                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          hintStyle: TextStyle(color: hintColor),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
-                            borderSide:
-                                BorderSide(color: Colors.grey[300]!),
+                            borderSide: BorderSide(color: dividerColor),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide(color: primary),
+                            borderSide: BorderSide(color: primaryColor),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
@@ -330,26 +329,21 @@ class _FeedScreenState extends State<FeedScreen> {
                     ElevatedButton(
                       onPressed: () async {
                         if (commentController.text.isEmpty) return;
-
                         final result = await PostService.addComment(
-                          post.id,
-                          commentController.text,
-                        );
-
+                          post.id, commentController.text);
                         if (!result.containsKey('error')) {
                           commentController.clear();
-                          if (context.mounted) {
-                            Navigator.pop(context);
+                          if (sheetContext.mounted) {
+                            Navigator.pop(sheetContext);
                             _loadFeed();
                           }
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: primary,
+                        backgroundColor: primaryColor,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                        ),
+                            borderRadius: BorderRadius.circular(24)),
                       ),
                       child: const Icon(Icons.send, size: 18),
                     ),
@@ -379,11 +373,13 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = ResponsiveHelper.isMobile(context);
-    final padding  = ResponsiveHelper.getResponsivePadding(context);
+    final isMobile  = ResponsiveHelper.isMobile(context);
+    final padding   = ResponsiveHelper.getResponsivePadding(context);
+    final cardColor = Theme.of(context).cardColor;
+    final hintColor = Theme.of(context).textTheme.bodySmall?.color;
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title:           const Text('Feed'),
         backgroundColor: primary,
@@ -391,19 +387,16 @@ class _FeedScreenState extends State<FeedScreen> {
         elevation:       0,
         centerTitle:     isMobile,
         actions: [
-          IconButton(
-            icon:      const Icon(Icons.refresh),
-            onPressed: _loadFeed,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadFeed),
         ],
       ),
       body: Column(
         children: [
-          // Create post box
+          // ── Create post box ──────────────────────────────────────────
           Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: cardColor,
               boxShadow: [
                 BoxShadow(
                   color:      Colors.black.withValues(alpha: 0.05),
@@ -417,16 +410,16 @@ class _FeedScreenState extends State<FeedScreen> {
                 TextField(
                   controller: postController,
                   decoration: InputDecoration(
-                    hintText:  'What\'s on your mind?',
-                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    hintText:  "What's on your mind?",
+                    hintStyle: TextStyle(color: hintColor),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
-                      borderSide:
-                          BorderSide(color: Colors.grey[300]!),
+                      borderSide: BorderSide(
+                          color: Theme.of(context).dividerColor),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
-                      borderSide:   BorderSide(color: primary),
+                      borderSide: BorderSide(color: primary),
                     ),
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: isMobile ? 12 : 16,
@@ -454,10 +447,11 @@ class _FeedScreenState extends State<FeedScreen> {
               ],
             ),
           ),
-          // Tab switcher
+
+          // ── Tab switcher ─────────────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(16),
-            color:   Colors.white,
+            color:   cardColor,
             child: Row(
               children: [
                 Expanded(
@@ -485,13 +479,13 @@ class _FeedScreenState extends State<FeedScreen> {
               ],
             ),
           ),
-          // Posts feed
+
+          // ── Posts feed ───────────────────────────────────────────────
           Expanded(
             child: isLoading
                 ? Center(
                     child: CircularProgressIndicator(
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(primary),
+                      valueColor: AlwaysStoppedAnimation<Color>(primary),
                     ),
                   )
                 : posts.isEmpty
@@ -500,19 +494,17 @@ class _FeedScreenState extends State<FeedScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.article_outlined,
-                                size: 48, color: Colors.grey[300]),
+                                size: 48, color: hintColor),
                             const SizedBox(height: 12),
                             Text('No posts yet',
                                 style: TextStyle(
-                                    color:      Colors.grey[500],
+                                    color:      hintColor,
                                     fontSize:   16,
                                     fontWeight: FontWeight.bold)),
                             const SizedBox(height: 8),
-                            Text(
-                                'Connect with friends to see their posts',
+                            Text('Connect with friends to see their posts',
                                 style: TextStyle(
-                                    color:    Colors.grey[400],
-                                    fontSize: 14)),
+                                    color: hintColor, fontSize: 14)),
                             const SizedBox(height: 24),
                             ElevatedButton(
                               onPressed: _loadFeed,
@@ -533,7 +525,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
-                              color:        Colors.white,
+                              color:        cardColor,
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
@@ -545,8 +537,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               ],
                             ),
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 // Header
                                 Padding(
@@ -555,11 +546,10 @@ class _FeedScreenState extends State<FeedScreen> {
                                     children: [
                                       CircleAvatar(
                                         radius: 20,
-                                        backgroundColor: primary
-                                            .withValues(alpha: 0.2),
+                                        backgroundColor:
+                                            primary.withValues(alpha: 0.2),
                                         child: Text(
-                                          (post.creator?['name'] ??
-                                                  'U')[0]
+                                          (post.creator?['name'] ?? 'U')[0]
                                               .toUpperCase(),
                                           style: TextStyle(
                                             color:      primary,
@@ -577,16 +567,13 @@ class _FeedScreenState extends State<FeedScreen> {
                                               post.creator?['name'] ??
                                                   'Unknown',
                                               style: const TextStyle(
-                                                  fontWeight:
-                                                      FontWeight.bold,
-                                                  fontSize: 14),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize:   14),
                                             ),
                                             Text(
-                                              _formatTime(
-                                                  post.createdAt),
+                                              _formatTime(post.createdAt),
                                               style: TextStyle(
-                                                  color:
-                                                      Colors.grey[500],
+                                                  color:    hintColor,
                                                   fontSize: 12),
                                             ),
                                           ],
@@ -613,26 +600,23 @@ class _FeedScreenState extends State<FeedScreen> {
                                         MainAxisAlignment.spaceEvenly,
                                     children: [
                                       InkWell(
-                                        onTap: () =>
-                                            _likePost(post.id),
+                                        onTap: () => _likePost(post.id),
                                         child: Column(
                                           children: [
                                             Icon(
                                               post.isLiked
                                                   ? Icons.favorite
-                                                  : Icons
-                                                      .favorite_border,
+                                                  : Icons.favorite_border,
                                               color: post.isLiked
                                                   ? Colors.red
-                                                  : Colors.grey[600],
+                                                  : hintColor,
                                               size: 20,
                                             ),
                                             const SizedBox(height: 4),
                                             Text('${post.likesCount}',
                                                 style: TextStyle(
                                                     fontSize: 12,
-                                                    color: Colors
-                                                        .grey[600])),
+                                                    color: hintColor)),
                                           ],
                                         ),
                                       ),
@@ -641,38 +625,30 @@ class _FeedScreenState extends State<FeedScreen> {
                                             _showCommentSheet(post),
                                         child: Column(
                                           children: [
-                                            Icon(
-                                                Icons
-                                                    .chat_bubble_outline,
-                                                color: Colors.grey[600],
-                                                size: 20),
+                                            Icon(Icons.chat_bubble_outline,
+                                                color: hintColor, size: 20),
                                             const SizedBox(height: 4),
-                                            Text(
-                                                '${post.commentsCount}',
+                                            Text('${post.commentsCount}',
                                                 style: TextStyle(
                                                     fontSize: 12,
-                                                    color: Colors
-                                                        .grey[600])),
+                                                    color: hintColor)),
                                           ],
                                         ),
                                       ),
                                       InkWell(
-                                        onTap: () =>
-                                            _repostPost(post.id),
+                                        onTap: () => _repostPost(post.id),
                                         child: Column(
                                           children: [
                                             Icon(Icons.repeat,
                                                 color: post.isReposted
                                                     ? primary
-                                                    : Colors.grey[600],
+                                                    : hintColor,
                                                 size: 20),
                                             const SizedBox(height: 4),
-                                            Text(
-                                                '${post.repostsCount}',
+                                            Text('${post.repostsCount}',
                                                 style: TextStyle(
                                                     fontSize: 12,
-                                                    color: Colors
-                                                        .grey[600])),
+                                                    color: hintColor)),
                                           ],
                                         ),
                                       ),

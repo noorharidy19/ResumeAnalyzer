@@ -16,10 +16,9 @@ class MyProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
-  final Color primary = const Color(0xFF7C8CF8);
-  final Color bg      = const Color(0xFFF5F7FF);
+  // primary is a getter — always reads from the live theme, no hardcoding
+  Color get primary => Theme.of(context).primaryColor;
 
-  // phoneNumber stays local — authProvider doesn't store it
   String? phoneNumber;
   bool isEditing = false;
   bool isLoading = false;
@@ -35,12 +34,10 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
     emailController = TextEditingController();
     phoneController = TextEditingController();
 
-    // Read name and email synchronously from authProvider — no async needed
     final auth = ref.read(authProvider);
     nameController.text  = auth.userName  ?? '';
     emailController.text = auth.userEmail ?? '';
 
-    // Only phone still needs a SharedPreferences read
     _loadPhoneNumber();
   }
 
@@ -56,7 +53,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      phoneNumber          = prefs.getString("phone_number") ?? '';
+      phoneNumber          = prefs.getString('phone_number') ?? '';
       phoneController.text = phoneNumber ?? '';
     });
   }
@@ -65,7 +62,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
     if (nameController.text.isEmpty || phoneController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Name and phone number cannot be empty'),
+          content:         Text('Name and phone number cannot be empty'),
           backgroundColor: Colors.red,
         ),
       );
@@ -75,7 +72,6 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
     setState(() => isLoading = true);
 
     try {
-      // Read token from authProvider instead of SharedPreferences
       final token = ref.read(authProvider).token;
       if (token == null) throw Exception('Not authenticated');
 
@@ -94,9 +90,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
 
         if (!mounted) return;
 
-        // Update authProvider so dashboard name updates instantly everywhere
         ref.read(authProvider.notifier).updateUserName(nameController.text);
-
         widget.onProfileUpdated?.call(nameController.text, null);
 
         setState(() {
@@ -106,7 +100,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✓ Profile updated successfully'),
+            content:         Text('✓ Profile updated successfully'),
             backgroundColor: Colors.green,
           ),
         );
@@ -117,7 +111,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update profile: $e'),
+            content:         Text('Failed to update profile: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -129,21 +123,19 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ref.watch — rebuilds whenever name or picture changes from anywhere
-    final auth = ref.watch(authProvider);
-
+    final auth        = ref.watch(authProvider);
     final isMobile    = ResponsiveHelper.isMobile(context);
     final padding     = ResponsiveHelper.getResponsivePadding(context);
     final profileSize = isMobile ? 100.0 : 120.0;
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: primary,
         foregroundColor: Colors.white,
-        title: const Text('My Profile'),
-        elevation: 0,
-        centerTitle: isMobile,
+        title:           const Text('My Profile'),
+        elevation:       0,
+        centerTitle:     isMobile,
         actions: [
           IconButton(
             icon: Icon(isEditing ? Icons.close : Icons.edit),
@@ -165,13 +157,13 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Picture Section
+            // ── Profile picture ──────────────────────────────────────
             Center(
               child: Container(
                 width:  profileSize,
                 height: profileSize,
                 decoration: BoxDecoration(
-                  color:        Colors.white,
+                  color:        Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(profileSize),
                   boxShadow: [
                     BoxShadow(
@@ -180,12 +172,10 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                       offset:     const Offset(0, 2),
                     )
                   ],
-                  // reads from authProvider instead of local variable
                   image: auth.profilePicture != null &&
                           auth.profilePicture!.isNotEmpty
                       ? DecorationImage(
                           image: NetworkImage(
-                            // URL kept exactly as teammate had it
                             'http://localhost:8001/${auth.profilePicture!.replaceAll(r'\', '/')}',
                           ),
                           fit: BoxFit.cover,
@@ -214,8 +204,8 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                         if (!mounted) return;
                         final newPic = prefs.getString('profile_picture');
                         if (newPic != null) {
-                          // Update authProvider so picture refreshes everywhere
-                          ref.read(authProvider.notifier)
+                          ref
+                              .read(authProvider.notifier)
                               .updateProfilePicture(newPic);
                         }
                         widget.onProfileUpdated?.call(null, newPic);
@@ -225,15 +215,18 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                 },
                 icon:  const Icon(Icons.photo_library),
                 label: const Text('Change Picture'),
-                style: ElevatedButton.styleFrom(backgroundColor: primary),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                    foregroundColor: Colors.white),
               ),
             ),
             SizedBox(height: isMobile ? 20 : 30),
 
+            // ── Info card ────────────────────────────────────────────
             Container(
               padding: EdgeInsets.all(isMobile ? 16 : 20),
               decoration: BoxDecoration(
-                color:        Colors.white,
+                color:        Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -246,7 +239,6 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Name
                   _fieldLabel('Full Name'),
                   const SizedBox(height: 8),
                   if (isEditing)
@@ -255,13 +247,11 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                     _readonlyBox(auth.userName ?? 'Not set'),
                   const SizedBox(height: 20),
 
-                  // Email — always read-only
                   _fieldLabel('Email Address'),
                   const SizedBox(height: 8),
                   _readonlyBox(auth.userEmail ?? 'Not set'),
                   const SizedBox(height: 20),
 
-                  // Phone
                   _fieldLabel('Phone Number'),
                   const SizedBox(height: 8),
                   if (isEditing)
@@ -274,7 +264,6 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                     _readonlyBox(phoneNumber ?? 'Not set'),
                   const SizedBox(height: 20),
 
-                  // Save Button
                   if (isEditing)
                     SizedBox(
                       width: double.infinity,
@@ -298,8 +287,8 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                                 ),
                               )
                             : const Text('Save Changes',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold)),
+                                style:
+                                    TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                 ],
@@ -314,33 +303,36 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
   Widget _fieldLabel(String label) => Text(
         label,
         style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color:      Colors.grey[700],
-            fontSize:   12),
+          fontWeight: FontWeight.bold,
+          color:      Theme.of(context).textTheme.bodySmall?.color,
+          fontSize:   12,
+        ),
       );
 
   Widget _readonlyBox(String text) => Container(
         width:   double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color:        Colors.grey[50],
+          color:        Theme.of(context).colorScheme.surface
+              .withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(12),
-          border:       Border.all(color: Colors.grey[200]!),
+          border:       Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Text(text,
-            style: TextStyle(color: Colors.grey[800], fontSize: 16)),
+            style: TextStyle(
+              color:    Theme.of(context).textTheme.bodyMedium?.color,
+              fontSize: 16,
+            )),
       );
 
-  Widget _editField(TextEditingController ctrl, String hint) => TextField(
-        controller: ctrl,
-        decoration: _editDecoration(hint),
-      );
+  Widget _editField(TextEditingController ctrl, String hint) =>
+      TextField(controller: ctrl, decoration: _editDecoration(hint));
 
   InputDecoration _editDecoration(String hint) => InputDecoration(
         hintText: hint,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:   BorderSide(color: Colors.grey[300]!),
+          borderSide:   BorderSide(color: Theme.of(context).dividerColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

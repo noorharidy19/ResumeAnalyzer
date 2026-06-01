@@ -10,13 +10,12 @@ class CandidatesScreen extends ConsumerStatefulWidget {
   const CandidatesScreen({super.key});
 
   @override
-  ConsumerState<CandidatesScreen> createState() =>
-      _CandidatesScreenState();
+  ConsumerState<CandidatesScreen> createState() => _CandidatesScreenState();
 }
 
 class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
-  final Color primary = const Color(0xFF7C8CF8);
-  final Color bg      = const Color(0xFFF5F7FF);
+  // primary is a getter so it always reads from the current theme
+  Color get primary => Theme.of(context).primaryColor;
 
   List<Map<String, dynamic>> candidates = [];
   bool    isLoading     = true;
@@ -29,11 +28,8 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
     _loadCandidates();
   }
 
-  // REMOVED: _getCurrentUserId() — no longer needed
-
   Future<void> _loadCandidates() async {
     try {
-      // Read token and userId from authProvider — no SharedPreferences needed
       final auth  = ref.read(authProvider);
       final token = auth.token;
 
@@ -44,7 +40,6 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
 
       currentUserId = auth.userId;
 
-      // URL kept exactly as teammate had it
       final usersResponse = await http.get(
         Uri.parse('http://localhost:8001/api/users/all'),
         headers: {'Authorization': 'Bearer $token'},
@@ -55,7 +50,7 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
         return;
       }
 
-      final acceptedResult = await ConnectionService.getMyConnections();
+      final acceptedResult        = await ConnectionService.getMyConnections();
       final acceptedConnectionIds = <String>{};
       if (acceptedResult is List) {
         for (var conn in acceptedResult) {
@@ -64,10 +59,9 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
         }
       }
 
-      final pendingResult = await ConnectionService.getPendingRequests();
+      final pendingResult  = await ConnectionService.getPendingRequests();
       final pendingUserIds = <String>{};
-      if (pendingResult is Map &&
-          pendingResult.containsKey('requests')) {
+      if (pendingResult is Map && pendingResult.containsKey('requests')) {
         for (var req in (pendingResult['requests'] ?? [])) {
           pendingUserIds.add(req['sender_id']);
           pendingUserIds.add(req['receiver_id']);
@@ -106,8 +100,7 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
   }
 
   void _sendConnectionRequest(String candidateId) async {
-    final result =
-        await ConnectionService.sendConnectionRequest(candidateId);
+    final result = await ConnectionService.sendConnectionRequest(candidateId);
 
     if (mounted) {
       if (result.containsKey('error')) {
@@ -118,9 +111,9 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
       } else {
         setState(() =>
             candidates.removeWhere((c) => c['id'] == candidateId));
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content:         Text('Connection request sent! 🎉'),
-          backgroundColor: Color(0xFF7C8CF8),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content:         const Text('Connection request sent! 🎉'),
+          backgroundColor: Theme.of(context).primaryColor,
         ));
       }
     }
@@ -128,11 +121,13 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = ResponsiveHelper.isMobile(context);
-    final padding  = ResponsiveHelper.getResponsivePadding(context);
+    final isMobile  = ResponsiveHelper.isMobile(context);
+    final padding   = ResponsiveHelper.getResponsivePadding(context);
+    final cardColor = Theme.of(context).cardColor;
+    final hintColor = Theme.of(context).textTheme.bodySmall?.color;
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title:           const Text('Candidates'),
         backgroundColor: primary,
@@ -162,15 +157,12 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                       const SizedBox(height: 16),
                       Text('Error loading candidates',
                           style: TextStyle(
-                              color:    Colors.grey[600],
+                              color: hintColor,
                               fontSize: isMobile ? 14 : 16)),
                       const SizedBox(height: 8),
                       ElevatedButton(
                         onPressed: () {
-                          setState(() {
-                            isLoading = true;
-                            hasError  = false;
-                          });
+                          setState(() { isLoading = true; hasError = false; });
                           _loadCandidates();
                         },
                         child: const Text('Retry'),
@@ -189,20 +181,19 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                           const SizedBox(height: 16),
                           Text('All caught up! 🎉',
                               style: TextStyle(
-                                  color:      Colors.grey[600],
+                                  color:      hintColor,
                                   fontSize:   isMobile ? 14 : 16,
                                   fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
                           Text('No new candidates available',
                               style: TextStyle(
-                                  color:    Colors.grey[500],
+                                  color:    hintColor,
                                   fontSize: isMobile ? 12 : 14)),
                           const SizedBox(height: 16),
                           Text(
-                            '(You\'ve connected or have pending '
-                            'requests with everyone)',
+                            "(You've connected or have pending requests with everyone)",
                             style: TextStyle(
-                                color:    Colors.grey[400],
+                                color:    hintColor,
                                 fontSize: isMobile ? 10 : 12),
                           ),
                         ],
@@ -217,7 +208,7 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                           margin: EdgeInsets.only(
                               bottom: isMobile ? 12 : 16),
                           decoration: BoxDecoration(
-                            color:        Colors.white,
+                            color:        cardColor,
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
@@ -228,13 +219,11 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                             ],
                           ),
                           child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Header with gradient — teammate's styling preserved
+                              // ── Gradient header (intentional branding — keep as-is) ──
                               Container(
-                                padding: EdgeInsets.all(
-                                    isMobile ? 12 : 16),
+                                padding: EdgeInsets.all(isMobile ? 12 : 16),
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
@@ -244,8 +233,7 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                                     begin: Alignment.topLeft,
                                     end:   Alignment.bottomRight,
                                   ),
-                                  borderRadius:
-                                      const BorderRadius.only(
+                                  borderRadius: const BorderRadius.only(
                                     topLeft:  Radius.circular(16),
                                     topRight: Radius.circular(16),
                                   ),
@@ -253,12 +241,11 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                                 child: Row(
                                   children: [
                                     CircleAvatar(
-                                      radius: 28,
-                                      backgroundColor: Colors.white
-                                          .withValues(alpha: 0.3),
+                                      radius:          28,
+                                      backgroundColor:
+                                          Colors.white.withValues(alpha: 0.3),
                                       child: Text(
-                                        candidate['name'][0]
-                                            .toUpperCase(),
+                                        candidate['name'][0].toUpperCase(),
                                         style: const TextStyle(
                                           color:      Colors.white,
                                           fontWeight: FontWeight.bold,
@@ -274,29 +261,23 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                                         children: [
                                           Text(candidate['name'],
                                               style: const TextStyle(
-                                                fontWeight:
-                                                    FontWeight.bold,
-                                                fontSize: 18,
-                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize:   18,
+                                                color:      Colors.white,
                                               )),
                                           const SizedBox(height: 4),
-                                          Text(
-                                            candidate['role'],
-                                            style: TextStyle(
-                                              color: Colors.white
-                                                  .withValues(
-                                                      alpha: 0.9),
-                                              fontSize: 14,
-                                            ),
-                                          ),
+                                          Text(candidate['role'],
+                                              style: TextStyle(
+                                                color: Colors.white
+                                                    .withValues(alpha: 0.9),
+                                                fontSize: 14,
+                                              )),
                                         ],
                                       ),
                                     ),
                                     Container(
-                                      padding:
-                                          const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical:   6),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 6),
                                       decoration: BoxDecoration(
                                         color: Colors.white
                                             .withValues(alpha: 0.2),
@@ -317,45 +298,40 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                                   ],
                                 ),
                               ),
-                              // Body
+
+                              // ── Card body ──────────────────────────────────
                               Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(children: [
                                       Icon(Icons.email_outlined,
-                                          size:  16,
-                                          color: Colors.grey[600]),
+                                          size: 16, color: hintColor),
                                       const SizedBox(width: 8),
                                       Expanded(
-                                        child: Text(
-                                            candidate['email'],
+                                        child: Text(candidate['email'],
                                             style: TextStyle(
-                                                color:    Colors.grey[600],
+                                                color:    hintColor,
                                                 fontSize: 13)),
                                       ),
                                     ]),
-                                    if (candidate['phone_number'] !=
-                                        null) ...[
+                                    if (candidate['phone_number'] != null) ...[
                                       const SizedBox(height: 8),
                                       Row(children: [
                                         Icon(Icons.phone_outlined,
-                                            size:  16,
-                                            color: Colors.grey[600]),
+                                            size: 16, color: hintColor),
                                         const SizedBox(width: 8),
-                                        Text(
-                                            candidate['phone_number'],
+                                        Text(candidate['phone_number'],
                                             style: TextStyle(
-                                                color:    Colors.grey[600],
+                                                color:    hintColor,
                                                 fontSize: 13)),
                                       ]),
                                     ],
                                     const SizedBox(height: 12),
                                     Text('Skills',
                                         style: TextStyle(
-                                            color:      Colors.grey[700],
+                                            color:      hintColor,
                                             fontSize:   12,
                                             fontWeight: FontWeight.bold)),
                                     const SizedBox(height: 8),
@@ -370,22 +346,19 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                                                     horizontal: 12,
                                                     vertical:   6),
                                                 decoration: BoxDecoration(
-                                                  gradient:
-                                                      LinearGradient(
+                                                  gradient: LinearGradient(
                                                     colors: [
                                                       primary.withValues(
-                                                          alpha: 0.1),
+                                                          alpha: 0.15),
                                                       primary.withValues(
-                                                          alpha: 0.05),
+                                                          alpha: 0.08),
                                                     ],
                                                   ),
                                                   borderRadius:
-                                                      BorderRadius
-                                                          .circular(20),
+                                                      BorderRadius.circular(20),
                                                   border: Border.all(
-                                                    color: primary
-                                                        .withValues(
-                                                            alpha: 0.3),
+                                                    color: primary.withValues(
+                                                        alpha: 0.3),
                                                   ),
                                                 ),
                                                 child: Text(skill,
@@ -401,7 +374,8 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                                   ],
                                 ),
                               ),
-                              // Action buttons
+
+                              // ── Action buttons ─────────────────────────────
                               Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Row(
@@ -409,24 +383,22 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                                     Expanded(
                                       child: OutlinedButton(
                                         style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets
-                                              .symmetric(vertical: 12),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 12),
                                           side: BorderSide(
                                             color: primary.withValues(
                                                 alpha: 0.5),
                                           ),
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
-                                                BorderRadius.circular(
-                                                    10),
+                                                BorderRadius.circular(10),
                                           ),
                                         ),
                                         onPressed: () {},
                                         child: Text('View Profile',
                                             style: TextStyle(
                                                 color:      primary,
-                                                fontWeight:
-                                                    FontWeight.w600)),
+                                                fontWeight: FontWeight.w600)),
                                       ),
                                     ),
                                     const SizedBox(width: 12),
@@ -434,12 +406,11 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                                       child: ElevatedButton(
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: primary,
-                                          padding: const EdgeInsets
-                                              .symmetric(vertical: 12),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 12),
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
-                                                BorderRadius.circular(
-                                                    10),
+                                                BorderRadius.circular(10),
                                           ),
                                           elevation: 4,
                                         ),

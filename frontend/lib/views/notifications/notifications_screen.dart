@@ -10,9 +10,6 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  final Color primary = const Color(0xFF7C8CF8);
-  final Color bg = const Color(0xFFF5F7FF);
-  
   List<notif_service.Notification> notifications = [];
   bool isLoading = true;
   int unreadCount = 0;
@@ -29,7 +26,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
 
     final result = await notif_service.NotificationService.getNotifications();
-    
+
     if (!result.containsKey('error')) {
       setState(() {
         notifications = result['notifications'] ?? [];
@@ -52,8 +49,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _markAsRead(String notificationId) async {
-    final result = await notif_service.NotificationService.markAsRead(notificationId);
-
+    final result =
+        await notif_service.NotificationService.markAsRead(notificationId);
     if (!result.containsKey('error')) {
       _loadNotifications();
     }
@@ -61,7 +58,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAllAsRead() async {
     final result = await notif_service.NotificationService.markAllAsRead();
-
     if (!result.containsKey('error')) {
       _loadNotifications();
     }
@@ -123,10 +119,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = ResponsiveHelper.isMobile(context);
-    
+    final isMobile  = ResponsiveHelper.isMobile(context);
+    final primary   = Theme.of(context).primaryColor;
+    final cardColor = Theme.of(context).cardColor;
+    final hintColor = Theme.of(context).textTheme.bodySmall?.color;
+    final dividerColor = Theme.of(context).dividerColor;
+
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Notifications'),
         backgroundColor: primary,
@@ -159,13 +159,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       Icon(
                         Icons.notifications_none,
                         size: isMobile ? 36 : 48,
-                        color: Colors.grey[300],
+                        color: hintColor,
                       ),
                       const SizedBox(height: 12),
                       Text(
                         'No notifications yet',
                         style: TextStyle(
-                          color: Colors.grey[500],
+                          color: hintColor,
                           fontSize: isMobile ? 14 : 16,
                         ),
                       ),
@@ -180,16 +180,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     return Container(
                       margin: EdgeInsets.only(bottom: isMobile ? 6 : 8),
                       decoration: BoxDecoration(
-                        color: notif.isRead ? Colors.white : primary.withOpacity(0.1),
+                        color: notif.isRead
+                            ? cardColor
+                            : primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: notif.isRead ? Colors.grey[200]! : primary.withOpacity(0.3),
+                          color: notif.isRead
+                              ? dividerColor
+                              : primary.withOpacity(0.3),
                         ),
                       ),
                       child: ListTile(
-                        contentPadding: EdgeInsets.all(isMobile ? 8 : 12),
+                        contentPadding:
+                            EdgeInsets.all(isMobile ? 8 : 12),
                         leading: Container(
-                          width: isMobile ? 40 : 48,
+                          width:  isMobile ? 40 : 48,
                           height: isMobile ? 40 : 48,
                           decoration: BoxDecoration(
                             color: primary.withOpacity(0.15),
@@ -198,21 +203,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           child: Center(
                             child: Text(
                               _getNotificationIcon(notif.notificationType),
-                              style: TextStyle(fontSize: isMobile ? 18 : 24),
+                              style:
+                                  TextStyle(fontSize: isMobile ? 18 : 24),
                             ),
                           ),
                         ),
                         title: Text(
-                          '${notif.triggeredBy?['name'] ?? 'Someone'} ${_getNotificationTitle(notif.notificationType).toLowerCase()}',
+                          '${notif.triggeredBy?['name'] ?? 'Someone'} '
+                          '${_getNotificationTitle(notif.notificationType).toLowerCase()}',
                           style: TextStyle(
-                            fontWeight: notif.isRead ? FontWeight.normal : FontWeight.bold,
+                            fontWeight: notif.isRead
+                                ? FontWeight.normal
+                                : FontWeight.bold,
                             fontSize: 14,
                           ),
                         ),
                         subtitle: Text(
                           _formatTime(notif.createdAt),
                           style: TextStyle(
-                            color: Colors.grey[500],
+                            color:    hintColor,
                             fontSize: 12,
                           ),
                         ),
@@ -221,7 +230,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             : GestureDetector(
                                 onTap: () => _markAsRead(notif.id),
                                 child: Container(
-                                  width: 8,
+                                  width:  8,
                                   height: 8,
                                   decoration: BoxDecoration(
                                     color: primary,
