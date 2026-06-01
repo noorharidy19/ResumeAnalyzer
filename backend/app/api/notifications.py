@@ -27,7 +27,7 @@ def get_notifications(
     db: Session = Depends(get_db)
 ):
     """Get user's notifications"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     notifications, total_count = NotificationService.get_notifications(user_id, limit, offset, db)
     
     # Enrich with triggered_by user data
@@ -65,7 +65,7 @@ def get_unread_count(
     db: Session = Depends(get_db)
 ):
     """Get unread notifications count"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     count = NotificationService.get_unread_notifications_count(user_id, db)
     return {"unread_count": count}
 
@@ -90,7 +90,7 @@ def mark_all_as_read(
     db: Session = Depends(get_db)
 ):
     """Mark all notifications as read"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     count = NotificationService.mark_all_as_read(user_id, db)
     return {"status": "marked all as read", "count": count}
 

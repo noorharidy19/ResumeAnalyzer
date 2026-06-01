@@ -29,3 +29,5 @@ class User(Base):
     posted_jobs  = relationship("Job", back_populates="company",   cascade="all, delete-orphan")
     
     applications = relationship("Application", back_populates="applicant", cascade="all, delete-orphan")
+
+    resume_analyses = relationship("ResumeAnalysis", back_populates="user", cascade="all, delete-orphan")

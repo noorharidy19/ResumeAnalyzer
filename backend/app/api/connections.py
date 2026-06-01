@@ -30,7 +30,7 @@ def send_connection_request(
         
         result = ConnectionService.send_connection_request(
             db, 
-            current_user["id"], 
+            current_user.id, 
             request_data.receiver_id
         )
         
@@ -80,7 +80,7 @@ def accept_connection(
         result = ConnectionService.accept_connection_request(
             db,
             connection_id,
-            current_user["id"]
+            current_user.id
         )
         
         if isinstance(result, dict) and "error" in result:
@@ -126,7 +126,7 @@ def reject_connection(
         result = ConnectionService.reject_connection_request(
             db,
             connection_id,
-            current_user["id"]
+            current_user.id
         )
         
         if isinstance(result, dict) and "error" in result:
@@ -148,7 +148,7 @@ def get_pending_requests(
 ):
     """Get all pending connection requests"""
     try:
-        requests = ConnectionService.get_pending_requests(db, current_user["id"])
+        requests = ConnectionService.get_pending_requests(db, current_user.id)
         
         request_list = []
         for r in requests:
@@ -192,7 +192,7 @@ def get_my_connections(
 ):
     """Get all accepted connections"""
     try:
-        connections = ConnectionService.get_all_connections(db, current_user["id"])
+        connections = ConnectionService.get_all_connections(db, current_user.id)
         
         conn_list = []
         for c in connections:
@@ -236,7 +236,7 @@ def get_connection_status(
     try:
         connection = ConnectionService.get_connection_status(
             db,
-            current_user["id"],
+            current_user.id,
             other_user_id
         )
         

@@ -6,6 +6,7 @@ from app.db.database import Base, engine
 from app.models.user import User
 from app.api import jobs, applications
 from fastapi.middleware.cors import CORSMiddleware
+from app.models.resume_analysis import ResumeAnalysis       
 
 Base.metadata.create_all(bind=engine)
 

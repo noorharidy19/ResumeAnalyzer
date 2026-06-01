@@ -11,7 +11,7 @@ from app.schemas.job import ApplicationStatusUpdate
 # ─────────────────────────────────────────────
 # Apply to a job
 # ─────────────────────────────────────────────
-def apply_to_job(db: Session, job_id: int, user_id: int, resume_snapshot: dict) -> Application:
+def apply_to_job(db: Session, job_id: int, user_id: str, resume_snapshot: dict) -> Application:
     """
     Creates an application and runs AI screening.
 
@@ -106,7 +106,7 @@ def get_application_detail(db: Session, application_id: int, company_id: int) ->
     return app
 
 
-def get_user_applications(db: Session, user_id: int) -> list[Application]:
+def get_user_applications(db: Session, user_id: str) -> list[Application]:
     """Returns all applications the current user has submitted."""
     return (
         db.query(Application)

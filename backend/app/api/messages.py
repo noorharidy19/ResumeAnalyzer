@@ -30,7 +30,7 @@ def send_message(
     db: Session = Depends(get_db)
 ):
     """Send a message to another user"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     
     # Verify connection exists and is accepted
     connection = db.query(Connection).filter(
@@ -112,7 +112,7 @@ async def get_chat_history(
     db: Session = Depends(get_db)
 ):
     """Get chat history for a connection"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     
     # Verify connection exists and is accepted
     connection = db.query(Connection).filter(
@@ -211,7 +211,7 @@ async def get_unread_count(
     db: Session = Depends(get_db)
 ):
     """Get total unread messages count"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     count = MessageService.get_unread_count(user_id, db)
     return {"unread_count": count}
 
@@ -222,7 +222,7 @@ async def get_unread_count_for_connection(
     db: Session = Depends(get_db)
 ):
     """Get unread messages count for a specific connection (without marking as read)"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     count = MessageService.get_unread_count_for_connection(connection_id, user_id, db)
     return {"unread_count": count}
 

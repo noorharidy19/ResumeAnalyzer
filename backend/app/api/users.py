@@ -36,27 +36,27 @@ class UserResponse(BaseModel):
 
 @router.get("/all", response_model=list[UserResponse])
 def get_all_users(
-    current_user: dict = Depends(get_current_user),
+    current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all users (excluding current user)"""
-    users = UserService.get_all_users(db, exclude_user_id=current_user["id"])
+    users = UserService.get_all_users(db, exclude_user_id=current_user.id)
     return users
 
 @router.get("/search", response_model=list[UserResponse])
 def search_users(
     q: str,
-    current_user: dict = Depends(get_current_user),
+    current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Search users by name or email"""
-    users = UserService.search_users(db, q, exclude_user_id=current_user["id"])
+    users = UserService.search_users(db, q, exclude_user_id=current_user.id)
     return users
 
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(
     user_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get a specific user by ID"""
@@ -70,11 +70,11 @@ def get_user(
 @router.post("/profile-picture/upload")
 async def upload_profile_picture(
     file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
+    current_user =  Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Upload profile picture for current user"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
     
     # Validate file
     if not file.filename:
@@ -130,11 +130,11 @@ async def upload_profile_picture(
 
 @router.delete("/profile-picture")
 def delete_profile_picture(
-    current_user: dict = Depends(get_current_user),
+    current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Delete current user's profile picture"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -158,11 +158,11 @@ def delete_profile_picture(
 @router.put("/profile")
 def update_profile(
     payload: dict,
-    current_user: dict = Depends(get_current_user),
+    current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Update current user's profile (name, phone_number)"""
-    user_id = current_user.get("id")
+    user_id = current_user.id
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:

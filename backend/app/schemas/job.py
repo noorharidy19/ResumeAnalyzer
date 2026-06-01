@@ -103,7 +103,7 @@ class AIScreeningResult(BaseModel):
 class ApplicationResponse(BaseModel):
     id:              int
     job_id:          int
-    user_id:         int
+    user_id:         str
     match_score:     Optional[float]
     verdict:         Optional[VerdictEnum]
     ai_screening:    Optional[Any]           # full AIScreeningResult dict

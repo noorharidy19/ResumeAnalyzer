@@ -115,6 +115,25 @@ async def analyze_resume(
             json.dump(analysis_output, f, indent=2, ensure_ascii=False)
 
         print(f"[API] Analysis complete. Saved to {output_path}")
+
+         # ── Save to DB ────────────────────────────────────────────────
+        from app.db.database import SessionLocal
+        from app.models.resume_analysis import ResumeAnalysis
+
+        db = SessionLocal()
+        try:
+            record = ResumeAnalysis(
+                user_id     = str(current_user.id),
+                analysis_id = analysis_id,
+                filename    = file.filename,
+                phase1      = phase1_result,
+                phase2      = phase2_result,
+                phase3      = phase3_result,
+            )
+            db.add(record)
+            db.commit()
+        finally:
+            db.close()
         
         background_tasks.add_task(
             enhance_cv,
