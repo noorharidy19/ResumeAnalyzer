@@ -15,15 +15,14 @@ class CompanyDashboardScreen extends StatefulWidget {
 class _CompanyDashboardScreenState extends State<CompanyDashboardScreen> {
   final JobService _jobService = JobService();
 
-  List<dynamic> _myJobs    = [];
-  bool _isLoading          = true;
+  List<dynamic> _myJobs   = [];
+  bool   _isLoading       = true;
   String? _error;
-  String _companyName      = '';
+  String _companyName     = '';
 
-  // ── Theme colors ────────────────────────────────────────────────────────
-  static const primary = Color(0xFF5C6BC0);
-  static const accent  = Color(0xFF3F51B5);
-  static const bg      = Color(0xFFF0F7FF);
+  // Company-side brand colors
+  static const _primary = Color(0xFF5C6BC0);
+  static const _accent  = Color(0xFF3F51B5);
 
   @override
   void initState() {
@@ -62,15 +61,20 @@ class _CompanyDashboardScreenState extends State<CompanyDashboardScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete job post?'),
-        content: const Text('This will also remove all applications for this job.'),
+        title:   const Text('Delete job post?'),
+        content: const Text(
+            'This will also remove all applications for this job.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -82,7 +86,8 @@ class _CompanyDashboardScreenState extends State<CompanyDashboardScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -91,25 +96,26 @@ class _CompanyDashboardScreenState extends State<CompanyDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: accent,
-        elevation: 0,
+        backgroundColor: _accent,
+        elevation:       0,
         title: Row(
           children: [
             CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.white.withOpacity(0.2),
-              child: const Icon(Icons.business, color: Colors.white, size: 18),
+              radius:          16,
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              child: const Icon(Icons.business,
+                  color: Colors.white, size: 18),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 _companyName,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color:      Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize:   16,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -118,13 +124,11 @@ class _CompanyDashboardScreenState extends State<CompanyDashboardScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _loadMyJobs,
-          ),
+              icon:      const Icon(Icons.refresh, color: Colors.white),
+              onPressed: _loadMyJobs),
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: _logout,
-          ),
+              icon:      const Icon(Icons.logout, color: Colors.white),
+              onPressed: _logout),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -135,20 +139,22 @@ class _CompanyDashboardScreenState extends State<CompanyDashboardScreen> {
           );
           if (created == true) _loadMyJobs();
         },
-        backgroundColor: accent,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Post a Job', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: _accent,
+        icon:  const Icon(Icons.add, color: Colors.white),
+        label: const Text('Post a Job',
+            style: TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: Column(
         children: [
-          // ── Stats banner ───────────────────────────────────────────────
+          // ── Stats banner — gradient is intentional branding ──────
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [accent, primary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                colors: [_accent, _primary],
+                begin:  Alignment.topLeft,
+                end:    Alignment.bottomRight,
               ),
             ),
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -157,19 +163,18 @@ class _CompanyDashboardScreenState extends State<CompanyDashboardScreen> {
                 _StatChip(
                   label: 'Total Jobs',
                   value: '${_myJobs.length}',
-                  icon: Icons.work_outline,
+                  icon:  Icons.work_outline,
                 ),
                 const SizedBox(width: 12),
                 _StatChip(
                   label: 'Open',
                   value: '${_myJobs.where((j) => j['status'] == 'open').length}',
-                  icon: Icons.check_circle_outline,
+                  icon:  Icons.check_circle_outline,
                 ),
               ],
             ),
           ),
 
-          // ── Job list ───────────────────────────────────────────────────
           Expanded(child: _buildBody()),
         ],
       ),
@@ -177,8 +182,11 @@ class _CompanyDashboardScreenState extends State<CompanyDashboardScreen> {
   }
 
   Widget _buildBody() {
+    final hintColor = Theme.of(context).textTheme.bodySmall?.color;
+
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: primary));
+      return const Center(
+          child: CircularProgressIndicator(color: _primary));
     }
     if (_error != null) {
       return Center(
@@ -191,8 +199,9 @@ class _CompanyDashboardScreenState extends State<CompanyDashboardScreen> {
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: _loadMyJobs,
-              style: ElevatedButton.styleFrom(backgroundColor: accent),
-              child: const Text('Retry', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(backgroundColor: _accent),
+              child: const Text('Retry',
+                  style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -203,21 +212,16 @@ class _CompanyDashboardScreenState extends State<CompanyDashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.work_off_outlined, size: 72, color: Colors.grey[400]),
+            Icon(Icons.work_off_outlined, size: 72, color: hintColor),
             const SizedBox(height: 16),
-            Text(
-              "No job posts yet",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[600],
-              ),
-            ),
+            Text('No job posts yet',
+                style: TextStyle(
+                    fontSize:   18,
+                    fontWeight: FontWeight.bold,
+                    color:      hintColor)),
             const SizedBox(height: 8),
-            Text(
-              "Tap the button below to post your first job",
-              style: TextStyle(color: Colors.grey[500]),
-            ),
+            Text('Tap the button below to post your first job',
+                style: TextStyle(color: hintColor)),
           ],
         ),
       );
@@ -225,19 +229,19 @@ class _CompanyDashboardScreenState extends State<CompanyDashboardScreen> {
 
     return RefreshIndicator(
       onRefresh: _loadMyJobs,
-      color: primary,
+      color:     _primary,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        itemCount: _myJobs.length,
+        padding:          const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        itemCount:        _myJobs.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (_, i) => _CompanyJobCard(
-          job: _myJobs[i] as Map<String, dynamic>,
+          job:      _myJobs[i] as Map<String, dynamic>,
           onDelete: () => _deleteJob(_myJobs[i]['id'] as int),
           onViewApplicants: () => Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => ApplicantsScreen(
-                jobId:    _myJobs[i]['id'] as int,
+                jobId:    _myJobs[i]['id']   as int,
                 jobTitle: _myJobs[i]['title'] as String,
               ),
             ),
@@ -250,50 +254,49 @@ class _CompanyDashboardScreenState extends State<CompanyDashboardScreen> {
 
 // ── Stat chip ──────────────────────────────────────────────────────────────────
 class _StatChip extends StatelessWidget {
-  final String label;
-  final String value;
+  final String   label;
+  final String   value;
   final IconData icon;
-  const _StatChip({required this.label, required this.value, required this.icon});
+  const _StatChip(
+      {required this.label, required this.value, required this.icon});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(value,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
-              Text(label,
-                  style: const TextStyle(color: Colors.white70, fontSize: 11)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color:        Colors.white.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(value,
+                    style: const TextStyle(
+                        color:      Colors.white,
+                        fontSize:   18,
+                        fontWeight: FontWeight.bold)),
+                Text(label,
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 11)),
+              ],
+            ),
+          ],
+        ),
+      );
 }
 
 // ── Company job card ───────────────────────────────────────────────────────────
 class _CompanyJobCard extends StatelessWidget {
   final Map<String, dynamic> job;
-  final VoidCallback onDelete;
-  final VoidCallback onViewApplicants;
+  final VoidCallback         onDelete;
+  final VoidCallback         onViewApplicants;
 
-  static const primary = Color(0xFF5C6BC0);
-  static const accent  = Color(0xFF3F51B5);
+  static const _primary = Color(0xFF5C6BC0);
 
   const _CompanyJobCard({
     required this.job,
@@ -303,56 +306,59 @@ class _CompanyJobCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isOpen = job['status'] == 'open';
+    final isOpen    = job['status'] == 'open';
+    final cardColor = Theme.of(context).cardColor;
 
     return Card(
       elevation: 3,
+      color:     cardColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title + status
             Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: primary.withOpacity(0.1),
+                    color:        _primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.work_outline, color: primary, size: 20),
+                  child: const Icon(Icons.work_outline,
+                      color: _primary, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     job['title'] ?? '',
                     style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: isOpen
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.grey.withOpacity(0.1),
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.grey.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isOpen
-                          ? Colors.green.withOpacity(0.4)
-                          : Colors.grey.withOpacity(0.4),
+                          ? Colors.green.withValues(alpha: 0.4)
+                          : Colors.grey.withValues(alpha: 0.4),
                     ),
                   ),
                   child: Text(
                     isOpen ? 'Open' : 'Closed',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize:   11,
                       fontWeight: FontWeight.w600,
-                      color: isOpen ? Colors.green[700] : Colors.grey[600],
+                      color: isOpen
+                          ? Colors.green[700]
+                          : Theme.of(context).textTheme.bodySmall?.color,
                     ),
                   ),
                 ),
@@ -363,14 +369,33 @@ class _CompanyJobCard extends StatelessWidget {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                  Icon(Icons.location_on_outlined,
+                      size:  14,
+                      color: Theme.of(context).textTheme.bodySmall?.color),
                   const SizedBox(width: 4),
-                  Text(job['location'], style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(job['location'],
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.color)),
                   if (job['job_type'] != null) ...[
                     const SizedBox(width: 12),
-                    const Icon(Icons.work_outline, size: 14, color: Colors.grey),
+                    Icon(Icons.work_outline,
+                        size:  14,
+                        color: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.color),
                     const SizedBox(width: 4),
-                    Text(job['job_type'], style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(job['job_type'],
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.color)),
                   ],
                 ],
               ),
@@ -383,11 +408,13 @@ class _CompanyJobCard extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: onViewApplicants,
-                    icon: const Icon(Icons.people_outline, size: 18, color: primary),
+                    icon: const Icon(Icons.people_outline,
+                        size: 18, color: _primary),
                     label: const Text('View Applicants',
-                        style: TextStyle(color: primary, fontSize: 13)),
+                        style: TextStyle(color: _primary, fontSize: 13)),
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: primary.withOpacity(0.5)),
+                      side:  BorderSide(
+                          color: _primary.withValues(alpha: 0.5)),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10)),
                     ),
@@ -395,7 +422,8 @@ class _CompanyJobCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  icon:    const Icon(Icons.delete_outline,
+                      color: Colors.red),
                   onPressed: onDelete,
                   tooltip: 'Delete job',
                 ),

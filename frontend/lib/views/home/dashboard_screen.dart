@@ -29,8 +29,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   int totalUnreadMessages      = 0;
   int totalUnreadNotifications = 0;
 
-  final Color primary = const Color(0xFF7C8CF8);
-  final Color bg      = const Color(0xFFF5F7FF);
+  // primary is kept as a convenience getter so gradient/accent uses stay consistent
+  Color get primary => Theme.of(context).primaryColor;
 
   @override
   void initState() {
@@ -49,9 +49,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       final result = await MessageService.getUnreadCount();
       if (!mounted) return;
       if (!result.containsKey('error')) {
-        setState(() {
-          totalUnreadMessages = result['unread_count'] ?? 0;
-        });
+        setState(() => totalUnreadMessages = result['unread_count'] ?? 0);
       }
     }
   }
@@ -61,9 +59,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       final result = await NotificationService.getUnreadCount();
       if (!mounted) return;
       if (!result.containsKey('error')) {
-        setState(() {
-          totalUnreadNotifications = result['unread_count'] ?? 0;
-        });
+        setState(() => totalUnreadNotifications = result['unread_count'] ?? 0);
       }
     }
   }
@@ -72,10 +68,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (ref.read(authProvider).isLoggedIn) {
       callback();
     } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()));
     }
   }
 
@@ -90,8 +84,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-
+    final auth          = ref.watch(authProvider);
     final isMobile      = ResponsiveHelper.isMobile(context);
     final isTablet      = ResponsiveHelper.isTablet(context);
     final padding       = ResponsiveHelper.getResponsivePadding(context);
@@ -104,33 +97,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     if (isMobile) {
       return Scaffold(
-        backgroundColor: bg,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          title: const Text("Resume Analyzer"),
+          title:           const Text('Resume Analyzer'),
           backgroundColor: primary,
-          elevation: 0,
-          centerTitle: true,
+          foregroundColor: Colors.white,
+          elevation:       0,
+          centerTitle:     true,
         ),
         drawer: _buildSidebar(auth),
         body: SingleChildScrollView(
           padding: padding,
-          child: _buildMainContent(titleFontSize),
+          child:   _buildMainContent(titleFontSize),
         ),
       );
     } else if (isTablet) {
       return Scaffold(
-        backgroundColor: bg,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Row(
           children: [
             Container(
               width: 200,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).cardColor,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color:      Colors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
-                    offset: const Offset(2, 0),
+                    offset:     const Offset(2, 0),
                   )
                 ],
               ),
@@ -139,7 +133,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Expanded(
               child: SingleChildScrollView(
                 padding: padding,
-                child: _buildMainContent(titleFontSize),
+                child:   _buildMainContent(titleFontSize),
               ),
             ),
           ],
@@ -147,18 +141,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       );
     } else {
       return Scaffold(
-        backgroundColor: bg,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Row(
           children: [
             Container(
               width: 250,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).cardColor,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
+                    color:      Colors.black.withValues(alpha: 0.05),
                     blurRadius: 8,
-                    offset: const Offset(2, 0),
+                    offset:     const Offset(2, 0),
                   )
                 ],
               ),
@@ -167,7 +161,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Expanded(
               child: SingleChildScrollView(
                 padding: padding,
-                child: _buildMainContent(titleFontSize),
+                child:   _buildMainContent(titleFontSize),
               ),
             ),
           ],
@@ -176,9 +170,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
-  Widget _buildSidebar(AuthState auth) {
-    return Drawer(child: _buildSidebarContent(auth));
-  }
+  Widget _buildSidebar(AuthState auth) =>
+      Drawer(child: _buildSidebarContent(auth));
 
   Widget _buildSidebarContent(AuthState auth) {
     return Column(
@@ -189,9 +182,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             color: primary,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color:      Colors.black.withValues(alpha: 0.1),
                 blurRadius: 4,
-                offset: const Offset(0, 2),
+                offset:     const Offset(0, 2),
               )
             ],
           ),
@@ -208,12 +201,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             userName:          auth.userName       ?? '',
                             userEmail:         auth.userEmail      ?? '',
                             onPictureUpdated: () async {
-                              await ref.read(profileProvider.notifier).refresh();
+                              await ref
+                                  .read(profileProvider.notifier)
+                                  .refresh();
                               final profile = ref.read(profileProvider);
                               if (profile.profilePicture != null) {
-                                ref.read(authProvider.notifier).updateProfilePicture(
-                                  profile.profilePicture!,
-                                );
+                                ref
+                                    .read(authProvider.notifier)
+                                    .updateProfilePicture(
+                                      profile.profilePicture!,
+                                    );
                               }
                             },
                           ),
@@ -221,10 +218,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       }
                     : null,
                 child: Container(
-                  width: 60,
+                  width:  60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color:        Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(60),
                     image: auth.profilePicture != null &&
                             auth.profilePicture!.isNotEmpty
@@ -246,16 +243,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               Text(
                 auth.userName ?? 'Guest User',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color:      Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize:   16,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 auth.userEmail ?? 'not logged in',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color:    Colors.white.withValues(alpha: 0.8),
                   fontSize: 12,
                 ),
                 maxLines: 1,
@@ -267,12 +264,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      );
-                    },
+                    onPressed: () => Navigator.push(context,
+                        MaterialPageRoute(
+                            builder: (_) => const LoginScreen())),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: primary,
@@ -301,15 +295,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: ListView(
             padding: const EdgeInsets.all(12),
             children: [
-              _sideItem(Icons.home,          "Dashboard",       true),
-              _sideItem(Icons.person,        "My Profile",      false),
-              _sideItem(Icons.description,   "Resume Analyzer", false),
-              _sideItem(Icons.people,        "Candidates",      false),
-              _sideItem(Icons.forum,         "Community",       false),
-              _sideItem(Icons.mail,          "Messages",        false, badgeCount: totalUnreadMessages),
-              _sideItem(Icons.feed,          "Feed",            false),
-              _sideItem(Icons.notifications, "Notifications",   false, badgeCount: totalUnreadNotifications),
-              _sideItem(Icons.analytics,     "Analytics",       false),
+              _sideItem(Icons.home,          'Dashboard',       true),
+              _sideItem(Icons.person,        'My Profile',      false),
+              _sideItem(Icons.description,   'Resume Analyzer', false),
+              _sideItem(Icons.people,        'Candidates',      false),
+              _sideItem(Icons.forum,         'Community',       false),
+              _sideItem(Icons.mail,          'Messages',        false,
+                  badgeCount: totalUnreadMessages),
+              _sideItem(Icons.feed,          'Feed',            false),
+              _sideItem(Icons.notifications, 'Notifications',   false,
+                  badgeCount: totalUnreadNotifications),
+              _sideItem(Icons.analytics,     'Analytics',       false),
             ],
           ),
         ),
@@ -322,28 +318,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Welcome to Resume Analyzer",
+          'Welcome to Resume Analyzer',
           style: TextStyle(
-            fontSize: titleFontSize,
+            fontSize:   titleFontSize,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          "Your AI-powered recruitment platform.",
-          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+          'Your AI-powered recruitment platform.',
+          style: TextStyle(
+            color:    Theme.of(context).textTheme.bodySmall?.color,
+            fontSize: 16,
+          ),
         ),
         const SizedBox(height: 30),
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color:        Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
+                color:      Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
-                offset: const Offset(0, 2),
+                offset:     const Offset(0, 2),
               )
             ],
           ),
@@ -351,23 +350,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                "Getting Started",
+                'Getting Started',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               Text(
                 ResponsiveHelper.isMobile(context)
-                    ? "Tap the menu to navigate features:"
-                    : "Use the menu on the left to navigate through different features:",
-                style: TextStyle(color: Colors.grey[700]),
+                    ? 'Tap the menu to navigate features:'
+                    : 'Use the menu on the left to navigate through different features:',
+                style: TextStyle(
+                    color: Theme.of(context).textTheme.bodySmall?.color),
               ),
               const SizedBox(height: 16),
-              _featureItem("📄", "Resume Analyzer",  "Upload and analyze your resume with AI-powered insights"),
-              _featureItem("👥", "Candidates",        "Browse and connect with other professionals"),
-              _featureItem("💬", "Community",         "Join discussions and share your experience"),
-              _featureItem("✉️", "Messages",          "Communicate with connections"),
-              _featureItem("📰", "Feed",              "View posts from your network"),
-              _featureItem("📊", "Analytics",         "View detailed analytics and history"),
+              _featureItem('📄', 'Resume Analyzer',
+                  'Upload and analyze your resume with AI-powered insights'),
+              _featureItem('👥', 'Candidates',
+                  'Browse and connect with other professionals'),
+              _featureItem('💬', 'Community',
+                  'Join discussions and share your experience'),
+              _featureItem('✉️', 'Messages', 'Communicate with connections'),
+              _featureItem('📰', 'Feed',     'View posts from your network'),
+              _featureItem('📊', 'Analytics',
+                  'View detailed analytics and history'),
             ],
           ),
         ),
@@ -392,7 +396,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 4),
                 Text(description,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                    style: TextStyle(
+                        color: Theme.of(context).textTheme.bodySmall?.color,
+                        fontSize: 13)),
               ],
             ),
           ),
@@ -406,7 +412,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
-        color: active ? primary.withValues(alpha: 0.15) : Colors.transparent,
+        color: active
+            ? primary.withValues(alpha: 0.15)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
       ),
       child: ListTile(
@@ -415,7 +423,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Icon(icon, color: active ? primary : Colors.grey),
             if (badgeCount > 0)
               Positioned(
-                top: -5,
+                top:   -5,
                 right: -5,
                 child: Container(
                   padding: const EdgeInsets.all(4),
@@ -426,8 +434,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   child: Text(
                     badgeCount > 99 ? '99+' : badgeCount.toString(),
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
+                      color:      Colors.white,
+                      fontSize:   10,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -437,34 +445,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         title: Text(title),
         onTap: () {
-          if (title == "My Profile") {
+          if (title == 'My Profile') {
             requireAuth(() => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const MyProfileScreen())));
-          } else if (title == "Resume Analyzer") {
+                MaterialPageRoute(
+                    builder: (_) => const MyProfileScreen())));
+          } else if (title == 'Resume Analyzer') {
             requireAuth(() => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const ResumeUploadScreen())));
-          } else if (title == "Candidates") {
+                MaterialPageRoute(
+                    builder: (_) => const ResumeUploadScreen())));
+          } else if (title == 'Candidates') {
             requireAuth(() => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const CandidatesScreen())));
-          } else if (title == "Community") {
+                MaterialPageRoute(
+                    builder: (_) => const CandidatesScreen())));
+          } else if (title == 'Community') {
             requireAuth(() => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const CommunityScreen())));
-          } else if (title == "Messages") {
-            requireAuth(() => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const MessagesScreen()))
+                MaterialPageRoute(
+                    builder: (_) => const CommunityScreen())));
+          } else if (title == 'Messages') {
+            requireAuth(() => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const MessagesScreen()))
                 .then((_) => _refreshUnreadCount()));
-          } else if (title == "Feed") {
+          } else if (title == 'Feed') {
             requireAuth(() => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const FeedScreen())));
-          } else if (title == "Notifications") {
+          } else if (title == 'Notifications') {
             requireAuth(() => Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (_) => const NotificationsScreen()))
                 .then((_) => _refreshUnreadNotifications()));
-          } else if (title == "Analytics") {
+          } else if (title == 'Analytics') {
             requireAuth(() => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const AnalyticsScreen())));
+                MaterialPageRoute(
+                    builder: (_) => const AnalyticsScreen())));
           }
         },
       ),

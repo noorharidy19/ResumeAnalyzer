@@ -12,13 +12,14 @@ class JobDetailScreen extends StatelessWidget {
         .toList();
 
     return Scaffold(
+      // AppBar and Scaffold background inherit from theme — no overrides needed
       appBar: AppBar(title: Text(job['title'] ?? 'Job Detail')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // ── Header ────────────────────────────────────────────────
             Text(
               job['title'] ?? '',
               style: Theme.of(context)
@@ -29,16 +30,15 @@ class JobDetailScreen extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               job['company']?['name'] ?? '',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(color: Theme.of(context).colorScheme.primary),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
             ),
             const SizedBox(height: 12),
 
-            // Meta chips row
+            // ── Meta chips ────────────────────────────────────────────
             Wrap(
-              spacing: 10,
+              spacing:    10,
               runSpacing: 6,
               children: [
                 if (job['location'] != null)
@@ -48,24 +48,27 @@ class JobDetailScreen extends StatelessWidget {
                 _MetaChip(
                   Icons.circle,
                   job['status'] == 'open' ? 'Open' : 'Closed',
-                  color: job['status'] == 'open' ? Colors.green : Colors.grey,
+                  color: job['status'] == 'open'
+                      ? Colors.green
+                      : Colors.grey,
                 ),
               ],
             ),
             const SizedBox(height: 20),
 
-            // Description
+            // ── Description ───────────────────────────────────────────
             _SectionHeader('Job Description'),
             const SizedBox(height: 8),
             Text(
               job['description'] ?? '',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    height: 1.6,
-                  ),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(height: 1.6),
             ),
             const SizedBox(height: 20),
 
-            // Requirements
+            // ── Requirements ──────────────────────────────────────────
             if (requirements.isNotEmpty) ...[
               _SectionHeader('Requirements'),
               const SizedBox(height: 8),
@@ -84,7 +87,7 @@ class JobDetailScreen extends StatelessWidget {
               const SizedBox(height: 24),
             ],
 
-            // Apply button
+            // ── Apply button ──────────────────────────────────────────
             SizedBox(
               width: double.infinity,
               child: _ApplyButtonFull(jobId: job['id'] as int),
@@ -114,26 +117,31 @@ class _SectionHeader extends StatelessWidget {
 
 class _MetaChip extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final Color? color;
+  final String   label;
+  final Color?   color;
   const _MetaChip(this.icon, this.label, {this.color});
 
   @override
   Widget build(BuildContext context) {
+    // Use surfaceContainerHighest which is the non-deprecated replacement
+    // for surfaceVariant and works correctly in both light and dark mode.
+    final chipBg = Theme.of(context).colorScheme.surfaceContainerHighest;
+    final defaultColor = Theme.of(context).textTheme.bodySmall?.color;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color:        chipBg,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color ?? Colors.grey[700]),
+          Icon(icon, size: 14, color: color ?? defaultColor),
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(fontSize: 12, color: color ?? Colors.grey[700]),
+            style: TextStyle(fontSize: 12, color: color ?? defaultColor),
           ),
         ],
       ),
@@ -141,6 +149,7 @@ class _MetaChip extends StatelessWidget {
   }
 }
 
+// ── Apply button ───────────────────────────────────────────────────────────────
 class _ApplyButtonFull extends StatefulWidget {
   final int jobId;
   const _ApplyButtonFull({required this.jobId});
@@ -158,14 +167,11 @@ class _ApplyButtonFullState extends State<_ApplyButtonFull> {
     setState(() => _loading = true);
     try {
       await _appService.applyToJob(widget.jobId);
-      setState(() {
-        _applied = true;
-        _loading = false;
-      });
+      setState(() { _applied = true; _loading = false; });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Application submitted successfully!'),
+            content:         Text('Application submitted successfully!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -188,7 +194,7 @@ class _ApplyButtonFullState extends State<_ApplyButtonFull> {
     if (_applied) {
       return ElevatedButton.icon(
         onPressed: null,
-        icon: const Icon(Icons.check_circle_outline),
+        icon:  const Icon(Icons.check_circle_outline),
         label: const Text('Application Submitted'),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.green,
@@ -206,10 +212,11 @@ class _ApplyButtonFullState extends State<_ApplyButtonFull> {
       child: _loading
           ? const SizedBox(
               height: 20,
-              width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              width:  20,
+              child:  CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Text('Apply Now', style: TextStyle(fontSize: 16)),
+          : const Text('Apply Now',
+              style: TextStyle(fontSize: 16)),
     );
   }
 }

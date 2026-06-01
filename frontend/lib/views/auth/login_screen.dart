@@ -16,15 +16,18 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final email    = TextEditingController();
-  final password = TextEditingController();
+  final _formKey  = GlobalKey<FormState>();
+  final email     = TextEditingController();
+  final password  = TextEditingController();
 
   bool obscurePassword = true;
 
-  static const primary = Color(0xFF5C6BC0);
-  static const accent  = Color(0xFF3F51B5);
-  static const bg      = Color(0xFFF0F7FF);
+  // These are brand colors for the login/signup flow — kept intentionally
+  // separate from the main app purple so the auth screens have their own feel.
+  // They use static const because they don't need to respond to theme changes
+  // (the Card widget handles its own background via cardColor automatically).
+  static const _primary = Color(0xFF5C6BC0);
+  static const _accent  = Color(0xFF3F51B5);
 
   @override
   void dispose() {
@@ -39,11 +42,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final res = await http.post(
-        Uri.parse("http://localhost:8001/auth/login"),
-        headers: {"Content-Type": "application/json"},
+        Uri.parse('http://localhost:8001/auth/login'),
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          "email":    email.text.trim(),
-          "password": password.text.trim(),
+          'email':    email.text.trim(),
+          'password': password.text.trim(),
         }),
       );
 
@@ -57,7 +60,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         ref.read(authProvider.notifier).login(
           token:          data['access_token'] ?? '',
-          userId:         user?['id']          ?? '',
+          userId:         user?['id']              ?? '',
           userName:       user?['name']            ?? '',
           userEmail:      user?['email']           ?? '',
           profilePicture: user?['profile_picture'],
@@ -75,14 +78,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             await prefs.setString('profile_picture', user!['profile_picture']);
           }
         } catch (e) {
-          debugPrint("Error saving prefs: $e");
+          debugPrint('Error saving prefs: $e');
         }
 
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Login successful ✅"),
+            content:         Text('Login successful ✅'),
             backgroundColor: Colors.green,
           ),
         );
@@ -100,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(data['detail'] ?? "Login failed ❌"),
+            content:         Text(data['detail'] ?? 'Login failed ❌'),
             backgroundColor: Colors.red,
           ),
         );
@@ -110,7 +113,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Connection error: $e"),
+          content:         Text('Connection error: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -120,9 +123,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(isLoadingProvider);
+    final isDark    = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: bg,
+      // In dark mode use the scaffold background; light mode keeps its soft blue
+      backgroundColor: isDark
+          ? Theme.of(context).scaffoldBackgroundColor
+          : const Color(0xFFF0F7FF),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -130,9 +137,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             constraints: const BoxConstraints(maxWidth: 500),
             child: Card(
               elevation: 8,
+              // Card automatically uses Theme.of(context).cardColor
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+                  borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Form(
@@ -140,28 +147,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // ── Header ───────────────────────────────────────
                       Row(
                         children: [
                           CircleAvatar(
-                            radius: 28,
-                            backgroundColor: primary.withValues(alpha: 0.1),
-                            child: const Icon(Icons.lock_outline, color: primary),
+                            radius:          28,
+                            backgroundColor: _primary.withValues(alpha: 0.1),
+                            child: const Icon(Icons.lock_outline, color: _primary),
                           ),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                "Welcome Back",
+                                'Welcome Back',
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize:   20,
                                   fontWeight: FontWeight.bold,
-                                  color: primary,
+                                  color:      _primary,
                                 ),
                               ),
                               Text(
-                                "Sign in to continue",
-                                style: TextStyle(color: Colors.grey[600]),
+                                'Sign in to continue',
+                                style: TextStyle(
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.color),
                               ),
                             ],
                           ),
@@ -170,32 +182,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                       const SizedBox(height: 24),
 
+                      // ── Email ────────────────────────────────────────
                       TextFormField(
-                        controller: email,
+                        controller:   email,
                         keyboardType: TextInputType.emailAddress,
                         validator: (v) {
-                          if (v == null || v.isEmpty) return "Email required";
-                          if (!v.contains("@")) return "Invalid email";
+                          if (v == null || v.isEmpty) return 'Email required';
+                          if (!v.contains('@')) return 'Invalid email';
                           return null;
                         },
-                        decoration: _inputStyle("Email", Icons.email_outlined),
+                        decoration: _inputStyle('Email', Icons.email_outlined),
                       ),
 
                       const SizedBox(height: 12),
 
+                      // ── Password ─────────────────────────────────────
                       TextFormField(
-                        controller: password,
+                        controller:  password,
                         obscureText: obscurePassword,
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? "Password required" : null,
-                        decoration: _inputStyle("Password", Icons.lock_outline)
+                        validator:   (v) =>
+                            (v == null || v.isEmpty) ? 'Password required' : null,
+                        decoration: _inputStyle('Password', Icons.lock_outline)
                             .copyWith(
                           suffixIcon: IconButton(
                             icon: Icon(
                               obscurePassword
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
-                              color: primary,
+                              color: _primary,
                             ),
                             onPressed: () =>
                                 setState(() => obscurePassword = !obscurePassword),
@@ -205,25 +219,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                       const SizedBox(height: 24),
 
+                      // ── Login button ─────────────────────────────────
                       SizedBox(
-                        width: double.infinity,
+                        width:  double.infinity,
                         height: 50,
                         child: ElevatedButton(
                           onPressed: isLoading ? null : login,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: accent,
+                            backgroundColor: _accent,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           child: isLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white)
                               : const Text(
-                                  "Login",
+                                  'Login',
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color:      Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                    fontSize:   16,
                                   ),
                                 ),
                         ),
@@ -234,11 +249,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       TextButton(
                         onPressed: () => Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const SignupScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const SignupScreen()),
                         ),
                         child: const Text(
                           "Don't have an account? Sign Up",
-                          style: TextStyle(color: primary),
+                          style: TextStyle(color: _primary),
                         ),
                       ),
                     ],
@@ -253,14 +269,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   InputDecoration _inputStyle(String hint, IconData icon) {
+    final isDark     = Theme.of(context).brightness == Brightness.dark;
+    final fillColor  = isDark
+        ? Theme.of(context).colorScheme.surface
+        : Colors.white;
+
     return InputDecoration(
-      hintText: hint,
-      prefixIcon: Icon(icon, color: primary),
-      filled: true,
-      fillColor: Colors.white,
+      hintText:   hint,
+      prefixIcon: Icon(icon, color: _primary),
+      filled:     true,
+      fillColor:  fillColor,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderSide:   BorderSide.none,
       ),
     );
   }

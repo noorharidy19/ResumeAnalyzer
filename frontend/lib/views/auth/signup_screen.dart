@@ -20,12 +20,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final phone    = TextEditingController();
   final password = TextEditingController();
 
-  bool obscurePassword = true;
-  String selectedRole  = 'user';
+  bool   obscurePassword = true;
+  String selectedRole    = 'user';
 
-  static const primary = Color(0xFF5C6BC0);
-  static const accent  = Color(0xFF3F51B5);
-  static const bg      = Color(0xFFF0F7FF);
+  static const _primary = Color(0xFF5C6BC0);
+  static const _accent  = Color(0xFF3F51B5);
 
   @override
   void dispose() {
@@ -42,14 +41,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
     try {
       final res = await http.post(
-        Uri.parse("http://localhost:8001/auth/signup"),
-        headers: {"Content-Type": "application/json"},
+        Uri.parse('http://localhost:8001/auth/signup'),
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          "name":         name.text.trim(),
-          "email":        email.text.trim(),
-          "phone_number": phone.text.trim(),
-          "password":     password.text.trim(),
-          "role":         selectedRole,
+          'name':         name.text.trim(),
+          'email':        email.text.trim(),
+          'phone_number': phone.text.trim(),
+          'password':     password.text.trim(),
+          'role':         selectedRole,
         }),
       );
 
@@ -61,7 +60,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       if (res.statusCode == 200 || res.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Account created successfully ✅"),
+            content:         Text('Account created successfully ✅'),
             backgroundColor: Colors.green,
           ),
         );
@@ -73,7 +72,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(data['detail'] ?? "Signup failed ❌"),
+            content:         Text(data['detail'] ?? 'Signup failed ❌'),
             backgroundColor: Colors.red,
           ),
         );
@@ -83,7 +82,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Connection error: $e"),
+          content:         Text('Connection error: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -93,9 +92,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(isLoadingProvider);
+    final isDark    = Theme.of(context).brightness == Brightness.dark;
+    final fillColor = isDark
+        ? Theme.of(context).colorScheme.surface
+        : Colors.white;
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: isDark
+          ? Theme.of(context).scaffoldBackgroundColor
+          : const Color(0xFFF0F7FF),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -104,8 +109,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             child: Card(
               elevation: 8,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
+                  borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Form(
@@ -114,28 +118,33 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
 
+                      // ── Header ───────────────────────────────────────
                       Row(
                         children: [
                           CircleAvatar(
-                            radius: 28,
-                            backgroundColor: primary.withValues(alpha: 0.1),
-                            child: const Icon(Icons.person_add, color: primary),
+                            radius:          28,
+                            backgroundColor: _primary.withValues(alpha: 0.1),
+                            child: const Icon(Icons.person_add, color: _primary),
                           ),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                "Create Account",
+                                'Create Account',
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize:   20,
                                   fontWeight: FontWeight.bold,
-                                  color: primary,
+                                  color:      _primary,
                                 ),
                               ),
                               Text(
-                                "Sign up to continue",
-                                style: TextStyle(color: Colors.grey[600]),
+                                'Sign up to continue',
+                                style: TextStyle(
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.color),
                               ),
                             ],
                           ),
@@ -144,26 +153,32 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                       const SizedBox(height: 20),
 
+                      // ── Role selector ────────────────────────────────
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF0F7FF),
+                          color: isDark
+                              ? Theme.of(context).colorScheme.surface
+                              : const Color(0xFFF0F7FF),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: primary.withValues(alpha: 0.2)),
+                          border: Border.all(
+                              color: _primary.withValues(alpha: 0.2)),
                         ),
                         padding: const EdgeInsets.all(4),
                         child: Row(
                           children: [
                             _RoleTab(
-                              label: "Job Seeker",
-                              icon: Icons.person_outline,
+                              label:    'Job Seeker',
+                              icon:     Icons.person_outline,
                               selected: selectedRole == 'user',
-                              onTap: () => setState(() => selectedRole = 'user'),
+                              onTap:    () =>
+                                  setState(() => selectedRole = 'user'),
                             ),
                             _RoleTab(
-                              label: "Company",
-                              icon: Icons.business_outlined,
+                              label:    'Company',
+                              icon:     Icons.business_outlined,
                               selected: selectedRole == 'company',
-                              onTap: () => setState(() => selectedRole = 'company'),
+                              onTap:    () =>
+                                  setState(() => selectedRole = 'company'),
                             ),
                           ],
                         ),
@@ -171,89 +186,102 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                       const SizedBox(height: 16),
 
+                      // ── Name ─────────────────────────────────────────
                       TextFormField(
                         controller: name,
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? "Name required" : null,
-                        decoration: inputStyle(
-                          selectedRole == 'company' ? "Company Name" : "Full Name",
+                        validator:  (v) => (v == null || v.isEmpty)
+                            ? 'Name required'
+                            : null,
+                        decoration: _inputStyle(
+                          selectedRole == 'company'
+                              ? 'Company Name'
+                              : 'Full Name',
                           selectedRole == 'company'
                               ? Icons.business_outlined
                               : Icons.person_outline,
+                          fillColor,
                         ),
                       ),
 
                       const SizedBox(height: 12),
 
+                      // ── Email ────────────────────────────────────────
                       TextFormField(
-                        controller: email,
+                        controller:   email,
                         keyboardType: TextInputType.emailAddress,
                         validator: (v) {
-                          if (v == null || v.isEmpty) return "Email required";
-                          if (!v.contains("@")) return "Invalid email";
+                          if (v == null || v.isEmpty) return 'Email required';
+                          if (!v.contains('@')) return 'Invalid email';
                           return null;
                         },
-                        decoration: inputStyle("Email", Icons.email_outlined),
+                        decoration:
+                            _inputStyle('Email', Icons.email_outlined, fillColor),
                       ),
 
                       const SizedBox(height: 12),
 
+                      // ── Phone ────────────────────────────────────────
                       TextFormField(
-                        controller: phone,
+                        controller:   phone,
                         keyboardType: TextInputType.phone,
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? "Phone required" : null,
-                        decoration: inputStyle("Phone Number", Icons.phone_outlined),
+                        validator:    (v) => (v == null || v.isEmpty)
+                            ? 'Phone required'
+                            : null,
+                        decoration: _inputStyle(
+                            'Phone Number', Icons.phone_outlined, fillColor),
                       ),
 
                       const SizedBox(height: 12),
 
+                      // ── Password ─────────────────────────────────────
                       TextFormField(
-                        controller: password,
+                        controller:  password,
                         obscureText: obscurePassword,
                         validator: (v) {
-                          if (v == null || v.isEmpty) return "Password required";
-                          if (v.length < 6) return "Min 6 characters";
+                          if (v == null || v.isEmpty) return 'Password required';
+                          if (v.length < 6) return 'Min 6 characters';
                           return null;
                         },
-                        decoration: inputStyle("Password", Icons.lock_outline)
-                            .copyWith(
+                        decoration:
+                            _inputStyle('Password', Icons.lock_outline, fillColor)
+                                .copyWith(
                           suffixIcon: IconButton(
                             icon: Icon(
                               obscurePassword
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
-                              color: primary,
+                              color: _primary,
                             ),
-                            onPressed: () =>
-                                setState(() => obscurePassword = !obscurePassword),
+                            onPressed: () => setState(
+                                () => obscurePassword = !obscurePassword),
                           ),
                         ),
                       ),
 
                       const SizedBox(height: 20),
 
+                      // ── Submit ───────────────────────────────────────
                       SizedBox(
-                        width: double.infinity,
+                        width:  double.infinity,
                         height: 50,
                         child: ElevatedButton(
                           onPressed: isLoading ? null : signup,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: accent,
+                            backgroundColor: _accent,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           child: isLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white)
                               : Text(
                                   selectedRole == 'company'
-                                      ? "Create Company Account"
-                                      : "Sign Up",
+                                      ? 'Create Company Account'
+                                      : 'Sign Up',
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color:      Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                    fontSize:   16,
                                   ),
                                 ),
                         ),
@@ -264,8 +292,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       TextButton(
                         onPressed: () => Navigator.pop(context),
                         child: const Text(
-                          "Already have an account? Login",
-                          style: TextStyle(color: primary),
+                          'Already have an account? Login',
+                          style: TextStyle(color: _primary),
                         ),
                       ),
                     ],
@@ -279,28 +307,29 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     );
   }
 
-  InputDecoration inputStyle(String hint, IconData icon) {
+  InputDecoration _inputStyle(String hint, IconData icon, Color fillColor) {
     return InputDecoration(
-      hintText: hint,
-      prefixIcon: Icon(icon, color: primary),
-      filled: true,
-      fillColor: Colors.white,
+      hintText:   hint,
+      prefixIcon: Icon(icon, color: _primary),
+      filled:     true,
+      fillColor:  fillColor,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+        borderSide:   BorderSide.none,
       ),
     );
   }
 }
 
+// ── Role tab widget ────────────────────────────────────────────────────────────
 class _RoleTab extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
+  final String       label;
+  final IconData     icon;
+  final bool         selected;
   final VoidCallback onTap;
 
-  static const primary = Color(0xFF5C6BC0);
-  static const accent  = Color(0xFF3F51B5);
+  static const _primary = Color(0xFF5C6BC0);
+  static const _accent  = Color(0xFF3F51B5);
 
   const _RoleTab({
     required this.label,
@@ -318,20 +347,22 @@ class _RoleTab extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? accent : Colors.transparent,
+            color:        selected ? _accent : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 18, color: selected ? Colors.white : primary),
+              Icon(icon,
+                  size:  18,
+                  color: selected ? Colors.white : _primary),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: selected ? Colors.white : primary,
+                  fontSize:   13,
+                  color:      selected ? Colors.white : _primary,
                 ),
               ),
             ],

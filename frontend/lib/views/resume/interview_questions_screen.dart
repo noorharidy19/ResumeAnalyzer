@@ -20,14 +20,17 @@ class _InterviewQuestionsScreenState extends State<InterviewQuestionsScreen> {
   void initState() {
     super.initState();
     final questions = widget.phase3['interview_questions'] as List<dynamic>? ?? [];
-    _expandedState = List.filled(questions.length, false);
+    _expandedState  = List.filled(questions.length, false);
   }
 
   @override
   Widget build(BuildContext context) {
-    const primary = Color(0xFF5C6BC0);
+    final primary      = Theme.of(context).primaryColor;
+    final hintColor    = Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey;
+    final dividerColor = Theme.of(context).dividerColor;
 
-    final questions = widget.phase3['interview_questions'] as List<dynamic>? ?? [];
+    final questions =
+        widget.phase3['interview_questions'] as List<dynamic>? ?? [];
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -36,15 +39,15 @@ class _InterviewQuestionsScreenState extends State<InterviewQuestionsScreen> {
         Text(
           'Interview Preparation',
           style: TextStyle(
-            fontSize: 18,
+            fontSize:   18,
             fontWeight: FontWeight.bold,
-            color: primary,
+            color:      primary,
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Role-specific questions for your top matched position',
-          style: TextStyle(fontSize: 13, color: Colors.grey),
+          style: TextStyle(fontSize: 13, color: hintColor),
         ),
         const SizedBox(height: 16),
         if (questions.isEmpty)
@@ -62,6 +65,8 @@ class _InterviewQuestionsScreenState extends State<InterviewQuestionsScreen> {
                 questions[index] as Map<String, dynamic>,
                 index,
                 primary,
+                hintColor,
+                dividerColor,
               ),
             ),
           ),
@@ -73,12 +78,14 @@ class _InterviewQuestionsScreenState extends State<InterviewQuestionsScreen> {
     Map<String, dynamic> question,
     int index,
     Color primary,
+    Color hintColor,
+    Color dividerColor,
   ) {
-    final q = question['question'] as String? ?? '';
-    final category = question['category'] as String? ?? '';
+    final q          = question['question']   as String? ?? '';
+    final category   = question['category']   as String? ?? '';
     final difficulty = question['difficulty'] as String? ?? '';
 
-    final categoryColor = _getCategoryColor(category);
+    final categoryColor   = _getCategoryColor(category);
     final difficultyColor = _getDifficultyColor(difficulty);
 
     return Card(
@@ -87,18 +94,16 @@ class _InterviewQuestionsScreenState extends State<InterviewQuestionsScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ExpansionTile(
         onExpansionChanged: (expanded) {
-          setState(() {
-            _expandedState[index] = expanded;
-          });
+          setState(() => _expandedState[index] = expanded);
         },
         title: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 28,
+              width:  28,
               height: 28,
               decoration: BoxDecoration(
-                color: primary.withOpacity(0.1),
+                color:        primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(50),
               ),
               alignment: Alignment.center,
@@ -106,8 +111,8 @@ class _InterviewQuestionsScreenState extends State<InterviewQuestionsScreen> {
                 '${index + 1}',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: primary,
-                  fontSize: 12,
+                  color:      primary,
+                  fontSize:   12,
                 ),
               ),
             ),
@@ -119,7 +124,7 @@ class _InterviewQuestionsScreenState extends State<InterviewQuestionsScreen> {
                   Text(
                     q,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize:   14,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 2,
@@ -129,32 +134,34 @@ class _InterviewQuestionsScreenState extends State<InterviewQuestionsScreen> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: categoryColor.withOpacity(0.2),
+                          color:        categoryColor.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           category,
                           style: TextStyle(
-                            fontSize: 10,
-                            color: categoryColor,
+                            fontSize:   10,
+                            color:      categoryColor,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: difficultyColor.withOpacity(0.2),
+                          color:        difficultyColor.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           difficulty,
                           style: TextStyle(
-                            fontSize: 10,
-                            color: difficultyColor,
+                            fontSize:   10,
+                            color:      difficultyColor,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -172,9 +179,9 @@ class _InterviewQuestionsScreenState extends State<InterviewQuestionsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Divider(color: Colors.grey.withOpacity(0.2)),
+                Divider(color: dividerColor),
                 const SizedBox(height: 12),
-                _buildAnswerGuide(question, primary),
+                _buildAnswerGuide(question, primary, hintColor),
               ],
             ),
           ),
@@ -183,40 +190,49 @@ class _InterviewQuestionsScreenState extends State<InterviewQuestionsScreen> {
     );
   }
 
-  Widget _buildAnswerGuide(Map<String, dynamic> question, Color primary) {
+  Widget _buildAnswerGuide(
+    Map<String, dynamic> question,
+    Color primary,
+    Color hintColor,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Answer Tips:',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         _buildTipItem(
           'Use STAR method',
           'Situation • Task • Action • Result for behavioral questions',
           primary,
+          hintColor,
         ),
         const SizedBox(height: 8),
         _buildTipItem(
           'Be specific',
           'Provide concrete examples from your projects or experience',
           primary,
+          hintColor,
         ),
         const SizedBox(height: 8),
         _buildTipItem(
           'Link to role',
           'Connect your answer to the job requirements and responsibilities',
           primary,
+          hintColor,
         ),
       ],
     );
   }
 
-  Widget _buildTipItem(String title, String description, Color primary) {
+  Widget _buildTipItem(
+    String title,
+    String description,
+    Color primary,
+    Color hintColor,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -229,17 +245,14 @@ class _InterviewQuestionsScreenState extends State<InterviewQuestionsScreen> {
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize:   12,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 description,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey,
-                ),
+                style: TextStyle(fontSize: 11, color: hintColor),
               ),
             ],
           ),
