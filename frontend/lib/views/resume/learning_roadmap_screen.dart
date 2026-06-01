@@ -20,21 +20,27 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
   Widget build(BuildContext context) {
     const primary = Color(0xFF5C6BC0);
 
-    final recommendations = widget.phase2['recommendations'] as List<dynamic>? ?? [];
-    final roadmap = widget.phase3['learning_roadmap'] as List<dynamic>? ?? [];
+    final recommendations =
+        widget.phase2['recommendations'] as List<dynamic>? ?? [];
+    final roadmap =
+        widget.phase3['learning_roadmap'] as List<dynamic>? ?? [];
+
+    // Resolved once per build
+    final hintColor   = Theme.of(context).textTheme.bodySmall?.color;
+    final surfaceTint = Theme.of(context).colorScheme.surface
+        .withValues(alpha: 0.6);
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Recommendations from Phase 2
+        // ── Skills to Learn ────────────────────────────────────────────
         if (recommendations.isNotEmpty) ...[
-          Text(
+          const Text(
             'Skills to Learn',
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: primary,
-            ),
+                fontSize:   18,
+                fontWeight: FontWeight.bold,
+                color:      Color(0xFF5C6BC0)),
           ),
           const SizedBox(height: 12),
           Column(
@@ -43,20 +49,22 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
               (index) => _buildRecommendationCard(
                 recommendations[index] as Map<String, dynamic>,
                 primary,
+                hintColor,
+                surfaceTint,
               ),
             ),
           ),
           const SizedBox(height: 24),
         ],
-        // Learning Roadmap from Phase 3
+
+        // ── Personalized Learning Path ─────────────────────────────────
         if (roadmap.isNotEmpty) ...[
-          Text(
+          const Text(
             'Personalized Learning Path',
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: primary,
-            ),
+                fontSize:   18,
+                fontWeight: FontWeight.bold,
+                color:      Color(0xFF5C6BC0)),
           ),
           const SizedBox(height: 12),
           Column(
@@ -66,10 +74,13 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
                 roadmap[index] as Map<String, dynamic>,
                 index,
                 primary,
+                hintColor,
+                surfaceTint,
               ),
             ),
           ),
         ],
+
         if (recommendations.isEmpty && roadmap.isEmpty)
           const Card(
             child: Padding(
@@ -81,12 +92,18 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
     );
   }
 
-  Widget _buildRecommendationCard(Map<String, dynamic> rec, Color primary) {
-    final skill = rec['skill'] as String? ?? '';
-    final priority = rec['priority'] as String? ?? '';
-    final resource = rec['resource'] as String? ?? '';
-    final url = rec['url'] as String? ?? '';
-    final hours = rec['est_hours'] as int? ?? 0;
+  // ── Recommendation card ──────────────────────────────────────────────────
+  Widget _buildRecommendationCard(
+    Map<String, dynamic> rec,
+    Color primary,
+    Color? hintColor,
+    Color surfaceTint,
+  ) {
+    final skill       = rec['skill']        as String? ?? '';
+    final priority    = rec['priority']     as String? ?? '';
+    final resource    = rec['resource']     as String? ?? '';
+    final url         = rec['url']          as String? ?? '';
+    final hours       = rec['est_hours']    as int?    ?? 0;
     final neededInJobs = rec['needed_in_jobs'] as int? ?? 0;
 
     final priorityColor = priority == 'High'
@@ -96,7 +113,8 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -109,47 +127,43 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        skill,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text(skill,
+                          style: const TextStyle(
+                              fontSize:   16,
+                              fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text(
                         'Needed in $neededInJobs matched job(s)',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 12, color: hintColor),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: priorityColor.withOpacity(0.2),
+                    color:        priorityColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     priority,
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: priorityColor,
-                    ),
+                        fontSize:   12,
+                        fontWeight: FontWeight.bold,
+                        color:      priorityColor),
                   ),
                 ),
               ],
             ),
+
             const SizedBox(height: 12),
-            // Resource info
+
+            // ── Resource box ─────────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.05),
+                color:        surfaceTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -157,59 +171,50 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.schedule, size: 16, color: Colors.grey),
+                      Icon(Icons.schedule, size: 16, color: hintColor),
                       const SizedBox(width: 8),
-                      Text(
-                        '~$hours hours',
+                      Text('~$hours hours',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w500, fontSize: 12)),
+                    ],
+                  ),
+                  if (resource.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(resource,
                         style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12,
+                            fontSize:   12,
+                            fontWeight: FontWeight.w500)),
+                    if (url.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () async {
+                          if (await canLaunchUrl(Uri.parse(url))) {
+                            await launchUrl(Uri.parse(url));
+                          }
+                        },
+                        child: const Row(
+                          children: [
+                            Icon(Icons.link,
+                                size:  14,
+                                color: Color(0xFF5C6BC0)),
+                            SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'View Resource',
+                                style: TextStyle(
+                                  fontSize:   12,
+                                  color:      Color(0xFF5C6BC0),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (resource.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          resource,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (url.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          InkWell(
-                            onTap: () async {
-                              if (await canLaunchUrl(Uri.parse(url))) {
-                                await launchUrl(Uri.parse(url));
-                              }
-                            },
-                            child: const Row(
-                              children: [
-                                Icon(Icons.link, size: 14, color: Color(0xFF5C6BC0)),
-                                SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(
-                                    'View Resource',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Color(0xFF5C6BC0),
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                  ],
                 ],
               ),
             ),
@@ -219,13 +224,20 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
     );
   }
 
-  Widget _buildRoadmapCard(Map<String, dynamic> item, int index, Color primary) {
-    final skill = item['skill'] as String? ?? '';
-    final priority = item['priority'] as String? ?? '';
-    final reason = item['reason'] as String? ?? '';
-    final resource = item['resource_title'] as String? ?? '';
-    final url = item['resource_url'] as String? ?? '';
-    final time = item['estimated_time'] as String? ?? '';
+  // ── Roadmap card ─────────────────────────────────────────────────────────
+  Widget _buildRoadmapCard(
+    Map<String, dynamic> item,
+    int index,
+    Color primary,
+    Color? hintColor,
+    Color surfaceTint,
+  ) {
+    final skill    = item['skill']           as String? ?? '';
+    final priority = item['priority']        as String? ?? '';
+    final reason   = item['reason']          as String? ?? '';
+    final resource = item['resource_title']  as String? ?? '';
+    final url      = item['resource_url']    as String? ?? '';
+    final time     = item['estimated_time']  as String? ?? '';
 
     final priorityColor = priority == 'High'
         ? Colors.red
@@ -234,30 +246,29 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title with step number
+            // ── Step number + skill ──────────────────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 32,
+                  width:  32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: primary.withOpacity(0.1),
+                    color:        primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(50),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     '${index + 1}',
                     style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: primary,
-                    ),
+                        fontWeight: FontWeight.bold, color: primary),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -265,27 +276,24 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        skill,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text(skill,
+                          style: const TextStyle(
+                              fontSize:   16,
+                              fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: priorityColor.withOpacity(0.2),
+                          color:        priorityColor.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           '$priority Priority',
                           style: TextStyle(
-                            fontSize: 11,
-                            color: priorityColor,
-                            fontWeight: FontWeight.w500,
-                          ),
+                              fontSize:   11,
+                              color:      priorityColor,
+                              fontWeight: FontWeight.w500),
                         ),
                       ),
                     ],
@@ -293,33 +301,26 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
                 ),
               ],
             ),
+
             const SizedBox(height: 12),
-            // Reason
-            if (reason.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Why learn this?',
-                    style: TextStyle(
-                      fontSize: 12,
+
+            // ── Reason ───────────────────────────────────────────────
+            if (reason.isNotEmpty) ...[
+              Text('Why learn this?',
+                  style: TextStyle(
+                      fontSize:   12,
                       fontWeight: FontWeight.w500,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    reason,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
-            // Resource details
+                      color:      hintColor)),
+              const SizedBox(height: 4),
+              Text(reason, style: const TextStyle(fontSize: 12)),
+              const SizedBox(height: 12),
+            ],
+
+            // ── Resource box ─────────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.05),
+                color:        surfaceTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -327,26 +328,19 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.schedule, size: 16, color: Colors.grey),
+                      Icon(Icons.schedule, size: 16, color: hintColor),
                       const SizedBox(width: 8),
-                      Text(
-                        time,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12,
-                        ),
-                      ),
+                      Text(time,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w500, fontSize: 12)),
                     ],
                   ),
                   if (resource.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    Text(
-                      resource,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    Text(resource,
+                        style: const TextStyle(
+                            fontSize:   12,
+                            fontWeight: FontWeight.w500)),
                   ],
                   if (url.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -358,14 +352,16 @@ class _LearningRoadmapScreenState extends State<LearningRoadmapScreen> {
                       },
                       child: const Row(
                         children: [
-                          Icon(Icons.link, size: 14, color: Color(0xFF5C6BC0)),
+                          Icon(Icons.link,
+                              size:  14,
+                              color: Color(0xFF5C6BC0)),
                           SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               'View Resource',
                               style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF5C6BC0),
+                                fontSize:   12,
+                                color:      Color(0xFF5C6BC0),
                                 fontWeight: FontWeight.w500,
                               ),
                               maxLines: 1,

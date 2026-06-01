@@ -34,50 +34,62 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
   @override
   Widget build(BuildContext context) {
     const primary = Color(0xFF5C6BC0);
-    const bg = Color(0xFFF6F8FF);
 
-    final phase1 = widget.analysisData['phase1'] as Map<String, dynamic>? ?? {};
-    final phase2 = widget.analysisData['phase2'] as Map<String, dynamic>? ?? {};
-    final phase3 = widget.analysisData['phase3'] as Map<String, dynamic>? ?? {};
+    final phase1 =
+        widget.analysisData['phase1'] as Map<String, dynamic>? ?? {};
+    final phase2 =
+        widget.analysisData['phase2'] as Map<String, dynamic>? ?? {};
+    final phase3 =
+        widget.analysisData['phase3'] as Map<String, dynamic>? ?? {};
 
     // analysis_id comes back from backend as a string like "analysis_20250524_143022"
-    final analysisId = widget.analysisData['analysis_id'] as String? ?? '';
+    final analysisId =
+        widget.analysisData['analysis_id'] as String? ?? '';
+
+    final hintColor = Theme.of(context).textTheme.bodySmall?.color;
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        // Transparent AppBar — foreground adapts via theme foregroundColor
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: primary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Resume Analysis',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            // Use theme body text color so it adapts in dark mode
+            color:      Theme.of(context).textTheme.bodyLarge?.color,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       body: Column(
         children: [
-          // Tab navigation
+          // ── Tab navigation ───────────────────────────────────────────
           Container(
-            color: Colors.white,
+            // cardColor adapts: white in light, dark card in dark mode
+            color: Theme.of(context).cardColor,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _buildTabButton(0, 'Extracted Data', primary),
-                  _buildTabButton(1, 'Job Matches', primary),
-                  _buildTabButton(2, 'Learning Path', primary),
-                  _buildTabButton(3, 'Interview Q&A', primary),
-                  _buildTabButton(4, 'Career Path', primary),
-                  _buildTabButton(5, '✨ Enhance CV', primary),
+                  _buildTabButton(0, 'Extracted Data', primary, hintColor),
+                  _buildTabButton(1, 'Job Matches',    primary, hintColor),
+                  _buildTabButton(2, 'Learning Path',  primary, hintColor),
+                  _buildTabButton(3, 'Interview Q&A',  primary, hintColor),
+                  _buildTabButton(4, 'Career Path',    primary, hintColor),
+                  _buildTabButton(5, '✨ Enhance CV',  primary, hintColor),
                 ],
               ),
             ),
           ),
-          Divider(color: primary.withOpacity(0.2), height: 1),
-          // Page view
+          Divider(color: primary.withValues(alpha: 0.2), height: 1),
+
+          // ── Page view ────────────────────────────────────────────────
           Expanded(
             child: PageView(
               controller: _pageController,
@@ -85,9 +97,9 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
                 setState(() => _currentPage = page);
               },
               children: [
-                _buildPhase1View(phase1, primary, bg),
+                _buildPhase1View(phase1, primary),
                 JobMatchesScreen(
-                  phase2: phase2,
+                  phase2:       phase2,
                   analysisData: widget.analysisData,
                 ),
                 LearningRoadmapScreen(phase2: phase2, phase3: phase3),
@@ -103,14 +115,15 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
     );
   }
 
-  Widget _buildTabButton(int index, String label, Color primary) {
+  Widget _buildTabButton(
+      int index, String label, Color primary, Color? hintColor) {
     final isActive = _currentPage == index;
     return GestureDetector(
       onTap: () {
         _pageController.animateToPage(
           index,
           duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
+          curve:    Curves.easeInOut,
         );
       },
       child: Container(
@@ -126,32 +139,31 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 13,
+            fontSize:   13,
             fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            color: isActive ? primary : Colors.grey,
+            // active tab uses accent; inactive uses theme hint color
+            color:      isActive ? primary : hintColor,
           ),
         ),
       ),
     );
   }
 
-  //Data resume extracted
-  Widget _buildPhase1View(
-    Map<String, dynamic> phase1,
-    Color primary,
-    Color bg,
-  ) {
+  // ── Phase 1 — Extracted Data ───────────────────────────────────────────────
+  Widget _buildPhase1View(Map<String, dynamic> phase1, Color primary) {
+    final hintColor = Theme.of(context).textTheme.bodySmall?.color;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         // Personal Info
         _buildSectionCard('Personal Information', primary, [
-          _buildInfoRow('Name', phase1['name'] ?? 'Not detected'),
-          _buildInfoRow('Email', phase1['email'] ?? 'Not detected'),
-          _buildInfoRow('Phone', phase1['phone'] ?? 'Not detected'),
-          _buildInfoRow('Location', phase1['location'] ?? 'Not detected'),
+          _buildInfoRow('Name',     phase1['name']     ?? 'Not detected', hintColor),
+          _buildInfoRow('Email',    phase1['email']    ?? 'Not detected', hintColor),
+          _buildInfoRow('Phone',    phase1['phone']    ?? 'Not detected', hintColor),
+          _buildInfoRow('Location', phase1['location'] ?? 'Not detected', hintColor),
           if (phase1['github'] != null)
-            _buildInfoRow('GitHub', phase1['github']),
+            _buildInfoRow('GitHub', phase1['github'], hintColor),
         ]),
         const SizedBox(height: 12),
         // Skills
@@ -164,9 +176,10 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
         // Experience
         _buildExperienceCard(
           'Experience',
-          phase1['experience_years'] ?? 0,
-          phase1['internship_count'] ?? 0,
+          phase1['experience_years']  ?? 0,
+          phase1['internship_count']  ?? 0,
           primary,
+          hintColor,
         ),
         const SizedBox(height: 12),
         // Education
@@ -174,6 +187,7 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
           'Education',
           phase1['education'] as List<dynamic>? ?? [],
           primary,
+          hintColor,
         ),
         const SizedBox(height: 12),
         // Projects
@@ -182,25 +196,24 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
           phase1['projects'] as List<dynamic>? ?? [],
           primary,
         ),
-
         const SizedBox(height: 12),
-
         ElevatedButton.icon(
           onPressed: () {
             _pageController.animateToPage(
               5,
               duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
+              curve:    Curves.easeInOut,
             );
           },
-          icon: const Icon(Icons.auto_fix_high),
+          icon:  const Icon(Icons.auto_fix_high),
           label: const Text('Enhance CV'),
         ),
       ],
     );
   }
 
-  Widget _buildSectionCard(String title, Color primary, List<Widget> children) {
+  Widget _buildSectionCard(
+      String title, Color primary, List<Widget> children) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -209,14 +222,9 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: primary,
-              ),
-            ),
+            Text(title,
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold, color: primary)),
             const SizedBox(height: 12),
             ...children,
           ],
@@ -225,7 +233,7 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String? value) {
+  Widget _buildInfoRow(String label, String? value, Color? hintColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -235,17 +243,18 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
             width: 80,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: Colors.grey,
-                fontSize: 12,
+                color:      hintColor,
+                fontSize:   12,
               ),
             ),
           ),
           Expanded(
             child: Text(
               value ?? 'N/A',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -253,7 +262,8 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
     );
   }
 
-  Widget _buildSkillsCard(String title, List<dynamic> skills, Color primary) {
+  Widget _buildSkillsCard(
+      String title, List<dynamic> skills, Color primary) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -262,29 +272,22 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: primary,
-              ),
-            ),
+            Text(title,
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold, color: primary)),
             const SizedBox(height: 12),
             if (skills.isEmpty)
               const Text('No skills detected')
             else
               Wrap(
-                spacing: 8,
+                spacing:    8,
                 runSpacing: 8,
                 children: skills
-                    .map(
-                      (skill) => Chip(
-                        label: Text(skill.toString()),
-                        backgroundColor: primary.withOpacity(0.1),
-                        labelStyle: TextStyle(color: primary),
-                      ),
-                    )
+                    .map((skill) => Chip(
+                          label:           Text(skill.toString()),
+                          backgroundColor: primary.withValues(alpha: 0.1),
+                          labelStyle:      TextStyle(color: primary),
+                        ))
                     .toList(),
               ),
           ],
@@ -298,6 +301,7 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
     dynamic years,
     dynamic internships,
     Color primary,
+    Color? hintColor,
   ) {
     return Card(
       elevation: 2,
@@ -307,32 +311,19 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: primary,
-              ),
-            ),
+            Text(title,
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold, color: primary)),
             const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
-                  child: _buildMetricCard(
-                    '$years',
-                    'Years Experience',
-                    primary,
-                  ),
-                ),
+                    child: _buildMetricCard(
+                        '$years', 'Years Experience', primary, hintColor)),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildMetricCard(
-                    '$internships',
-                    'Internships',
-                    primary,
-                  ),
-                ),
+                    child: _buildMetricCard(
+                        '$internships', 'Internships', primary, hintColor)),
               ],
             ),
           ],
@@ -341,27 +332,24 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
     );
   }
 
-  Widget _buildMetricCard(String value, String label, Color primary) {
+  Widget _buildMetricCard(
+      String value, String label, Color primary, Color? hintColor) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: primary.withOpacity(0.05),
+        color:        primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: primary.withOpacity(0.2)),
+        border:       Border.all(color: primary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: primary,
-            ),
-          ),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 24, fontWeight: FontWeight.bold, color: primary)),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Text(label,
+              style: TextStyle(fontSize: 12, color: hintColor)),
         ],
       ),
     );
@@ -371,6 +359,7 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
     String title,
     List<dynamic> education,
     Color primary,
+    Color? hintColor,
   ) {
     return Card(
       elevation: 2,
@@ -380,14 +369,9 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: primary,
-              ),
-            ),
+            Text(title,
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold, color: primary)),
             const SizedBox(height: 12),
             if (education.isEmpty)
               const Text('No education detected')
@@ -401,26 +385,17 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          eduMap['institution'] ?? 'Unknown',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        Text(eduMap['institution'] ?? 'Unknown',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold)),
                         if (eduMap['degree'] != null)
-                          Text(
-                            eduMap['degree'],
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
+                          Text(eduMap['degree'],
+                              style: TextStyle(
+                                  fontSize: 12, color: hintColor)),
                         if (eduMap['year'] != null)
-                          Text(
-                            '${eduMap['year']}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
+                          Text('${eduMap['year']}',
+                              style: TextStyle(
+                                  fontSize: 12, color: hintColor)),
                       ],
                     ),
                   );
@@ -433,10 +408,7 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
   }
 
   Widget _buildProjectsCard(
-    String title,
-    List<dynamic> projects,
-    Color primary,
-  ) {
+      String title, List<dynamic> projects, Color primary) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -445,14 +417,9 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: primary,
-              ),
-            ),
+            Text(title,
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold, color: primary)),
             const SizedBox(height: 12),
             if (projects.isEmpty)
               const Text('No projects detected')
@@ -465,10 +432,9 @@ class _ResumeAnalysisScreenState extends State<ResumeAnalysisScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          '• ',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                        const Text('• ',
+                            style:
+                                TextStyle(fontWeight: FontWeight.bold)),
                         Expanded(child: Text(project.toString())),
                       ],
                     ),
