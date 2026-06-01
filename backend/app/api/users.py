@@ -67,60 +67,58 @@ def get_user(
     
     return user
 
+BASE_URL = "http://192.168.1.5:8001"  # ✅ add this near the top of the file
+
 @router.post("/profile-picture/upload")
 async def upload_profile_picture(
     file: UploadFile = File(...),
-    current_user =  Depends(get_current_user),
+    current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Upload profile picture for current user"""
     user_id = current_user.id
-    
-    # Validate file
+
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
-    
-    # Check file type
+
     allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
     file_ext = os.path.splitext(file.filename)[1].lower()
     if file_ext not in allowed_extensions:
-        raise HTTPException(status_code=400, detail="File type not allowed. Use jpg, png, gif, or webp")
-    
-    # Check file size (max 5MB)
+        raise HTTPException(status_code=400, detail="File type not allowed.")
+
     file_size = await file.read()
-    await file.seek(0)  # Reset file pointer
+    await file.seek(0)
     if len(file_size) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File size exceeds 5MB")
-    
+
     try:
-        # Generate unique filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{user_id}_{timestamp}{file_ext}"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        
-        # Save file
+        filepath = f"{UPLOAD_DIR}/{filename}"  # ✅ forward slash, no os.path.join
+
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        
-        # Update user profile picture path
+
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
-        # Delete old profile picture if exists
-        if user.profile_picture and os.path.exists(user.profile_picture):
-            try:
-                os.remove(user.profile_picture)
-            except:
-                pass
-        
-        # Save new path
-        user.profile_picture = filepath
+
+        if user.profile_picture:
+            # Extract local path from old URL if needed
+            old_path = user.profile_picture.replace(f"{BASE_URL}/", "")
+            if os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                except:
+                    pass
+
+        # ✅ Save full URL to DB
+        full_url = f"{BASE_URL}/{filepath}"
+        user.profile_picture = full_url
         db.commit()
-        
+
         return {
             "message": "Profile picture uploaded successfully",
-            "profile_picture": filepath
+            "profile_picture": full_url
         }
     except HTTPException:
         raise

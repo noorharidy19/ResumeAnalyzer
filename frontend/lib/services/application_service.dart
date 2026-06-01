@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApplicationService {
-  static const String _baseUrl = 'http://localhost:8001';
+  static const String _baseUrl = 'http://192.168.1.28:8001';
 
   // ── Auth token ────────────────────────────────────────────────────────────
   Future<String?> _getToken() async {

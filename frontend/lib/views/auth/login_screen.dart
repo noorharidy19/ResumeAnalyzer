@@ -42,7 +42,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final res = await http.post(
-        Uri.parse('http://localhost:8001/auth/login'),
+        Uri.parse('http://192.168.1.28:8001/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email':    email.text.trim(),
@@ -91,13 +91,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
 
         final role = user?['role'] ?? 'user';
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
             builder: (_) => role == 'company'
                 ? const CompanyDashboardScreen()
                 : const DashboardScreen(),
           ),
+          (_) => false, 
         );
       } else {
         if (!mounted) return;

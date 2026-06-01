@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/job_service.dart';
+import '../../utils/responsive_helper.dart';
 
 class PostJobScreen extends StatefulWidget {
   const PostJobScreen({super.key});
@@ -91,9 +92,9 @@ class _PostJobScreenState extends State<PostJobScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark    = Theme.of(context).brightness == Brightness.dark;
-    final fillColor = isDark
-        ? Theme.of(context).colorScheme.surface
-        : Colors.white;
+    final isMobile  = ResponsiveHelper.isMobile(context);
+    final padding   = ResponsiveHelper.getResponsivePadding(context);
+    final fillColor = isDark ? Theme.of(context).colorScheme.surface : Colors.white;
     final cardColor = Theme.of(context).cardColor;
 
     return Scaffold(
@@ -112,7 +113,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          // respect keyboard insets so fields stay visible when keyboard opens
+          padding: padding.add(EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 16)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -146,76 +148,99 @@ class _PostJobScreenState extends State<PostJobScreen> {
                       _Label('Job Description *'),
                       TextFormField(
                         controller: _descCtrl,
-                        maxLines:   5,
+                        // allow the description to expand vertically on larger devices
+                        minLines: 4,
+                        maxLines: null,
                         decoration: _inputStyle(
                           'Describe the role, responsibilities...',
                           Icons.description_outlined,
                           fillColor,
                         ).copyWith(alignLabelWithHint: true),
-                        validator: (v) =>
-                            (v == null || v.trim().length < 10)
-                                ? 'Please add a description'
-                                : null,
+                        validator: (v) => (v == null || v.trim().length < 10)
+                            ? 'Please add a description'
+                            : null,
                       ),
 
                       const SizedBox(height: 16),
 
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _Label('Location'),
-                                TextFormField(
-                                  controller: _locationCtrl,
-                                  decoration: _inputStyle(
-                                      'e.g. Cairo, Egypt',
-                                      Icons.location_on_outlined,
-                                      fillColor),
-                                ),
-                              ],
+                      // Layout adapts: side-by-side on wide screens, stacked on mobile
+                      if (isMobile) ...[
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _Label('Location'),
+                            TextFormField(
+                              controller: _locationCtrl,
+                              decoration: _inputStyle(
+                                  'e.g. Cairo, Egypt',
+                                  Icons.location_on_outlined,
+                                  fillColor),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _Label('Job Type'),
-                                DropdownButtonFormField<String>(
-                                  value: _selectedJobType,
-                                  hint: const Text('Select',
-                                      style: TextStyle(fontSize: 13)),
-                                  dropdownColor: cardColor,
-                                  decoration: InputDecoration(
-                                    prefixIcon: const Icon(
-                                        Icons.work_outline,
-                                        color: _primary),
-                                    filled:    true,
-                                    fillColor: fillColor,
-                                    border: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12),
-                                      borderSide: BorderSide.none,
-                                    ),
+                            const SizedBox(height: 12),
+                            _Label('Job Type'),
+                            DropdownButtonFormField<String>(
+                              value: _selectedJobType,
+                              hint: const Text('Select', style: TextStyle(fontSize: 13)),
+                              dropdownColor: cardColor,
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.work_outline, color: _primary),
+                                filled: true,
+                                fillColor: fillColor,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                              items: _jobTypes
+                                  .map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13))))
+                                  .toList(),
+                              onChanged: (v) => setState(() => _selectedJobType = v),
+                            ),
+                          ],
+                        ),
+                      ] else ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _Label('Location'),
+                                  TextFormField(
+                                    controller: _locationCtrl,
+                                    decoration: _inputStyle('e.g. Cairo, Egypt', Icons.location_on_outlined, fillColor),
                                   ),
-                                  items: _jobTypes
-                                      .map((t) => DropdownMenuItem(
-                                            value: t,
-                                            child: Text(t,
-                                                style: const TextStyle(
-                                                    fontSize: 13)),
-                                          ))
-                                      .toList(),
-                                  onChanged: (v) =>
-                                      setState(() => _selectedJobType = v),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _Label('Job Type'),
+                                  DropdownButtonFormField<String>(
+                                    value: _selectedJobType,
+                                    hint: const Text('Select', style: TextStyle(fontSize: 13)),
+                                    dropdownColor: cardColor,
+                                    decoration: InputDecoration(
+                                      prefixIcon: const Icon(Icons.work_outline, color: _primary),
+                                      filled: true,
+                                      fillColor: fillColor,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                    ),
+                                    items: _jobTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13)))).toList(),
+                                    onChanged: (v) => setState(() => _selectedJobType = v),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

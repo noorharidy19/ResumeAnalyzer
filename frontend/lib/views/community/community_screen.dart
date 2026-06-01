@@ -1,33 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/connection_service.dart';
 import '../../utils/responsive_helper.dart';
+import '../../providers/app_providers.dart';
 
-class CommunityScreen extends StatefulWidget {
+class CommunityScreen extends ConsumerStatefulWidget {
   const CommunityScreen({super.key});
 
   @override
-  State<CommunityScreen> createState() => _CommunityScreenState();
+  ConsumerState<CommunityScreen> createState() => _CommunityScreenState();
 }
 
-class _CommunityScreenState extends State<CommunityScreen> {
+class _CommunityScreenState extends ConsumerState<CommunityScreen> {
   // getter — always reads from live theme
   Color get primary => Theme.of(context).primaryColor;
 
   List<Map<String, dynamic>> pendingRequests = [];
-  bool isLoading = true;
+  bool    isLoading     = true;
+  String? currentUserId;
 
   @override
   void initState() {
     super.initState();
+    currentUserId = ref.read(authProvider).userId;
     _loadPendingRequests();
   }
 
   Future<void> _loadPendingRequests() async {
+    setState(() => isLoading = true);
     final result = await ConnectionService.getPendingRequests();
     setState(() {
       if (result.containsKey('requests')) {
-        pendingRequests =
-            List<Map<String, dynamic>>.from(result['requests'] ?? []);
+        final all = List<Map<String, dynamic>>.from(result['requests'] ?? []);
+        if (currentUserId != null && currentUserId!.isNotEmpty) {
+          pendingRequests = all.where((r) {
+            return r['receiver_id']?.toString() == currentUserId;
+          }).toList();
+        } else {
+          pendingRequests = all;
+        }
       }
       isLoading = false;
     });
@@ -92,31 +103,42 @@ class _CommunityScreenState extends State<CommunityScreen> {
         elevation:       0,
         foregroundColor: Colors.white,
         centerTitle:     isMobile,
+        actions: [
+          IconButton(
+            icon:    const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _loadPendingRequests,
+          ),
+        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : pendingRequests.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.inbox,
-                          size:  isMobile ? 48 : 64,
-                          color: hintColor),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No pending requests',
-                        style: TextStyle(
-                            color:    hintColor,
-                            fontSize: isMobile ? 14 : 16),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding:     padding,
-                  itemCount:   pendingRequests.length,
-                  itemBuilder: (context, index) {
+          : RefreshIndicator(
+              onRefresh: _loadPendingRequests,
+              color:     primary,
+              child:     pendingRequests.isEmpty
+                  ? ListView(
+                      padding:  padding,
+                      children: [
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.inbox, size: isMobile ? 48 : 64, color: hintColor),
+                            const SizedBox(height: 16),
+                            Text('No pending requests',
+                                style: TextStyle(color: hintColor, fontSize: isMobile ? 14 : 16)),
+                            const SizedBox(height: 8),
+                            Text('Pull down to refresh',
+                                style: TextStyle(color: hintColor?.withValues(alpha: 0.6), fontSize: 12)),
+                          ],
+                        ),
+                      ],
+                    )
+                  : ListView.builder(
+                      padding:     padding,
+                      itemCount:   pendingRequests.length,
+                      itemBuilder: (context, index) {
                     final request = pendingRequests[index];
                     final sender  = request['sender'] ?? {};
 
@@ -248,8 +270,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         ],
                       ),
                     );
-                  },
-                ),
+                      },
+                    ),
+            ),
     );
   }
 }

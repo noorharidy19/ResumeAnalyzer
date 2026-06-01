@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/user_service.dart';
 import 'profile_picture_viewer.dart';
+import '../settings/settings_screen.dart';
 import '../../utils/responsive_helper.dart';
 import '../../providers/app_providers.dart';
 
@@ -150,6 +151,14 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
             },
             tooltip: isEditing ? 'Cancel' : 'Edit',
           ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+            tooltip: 'Settings',
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -176,7 +185,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                           auth.profilePicture!.isNotEmpty
                       ? DecorationImage(
                           image: NetworkImage(
-                            'http://localhost:8001/${auth.profilePicture!.replaceAll(r'\', '/')}',
+                            'http://192.168.1.28:8001/${auth.profilePicture!.replaceAll(r'\', '/')}',
                           ),
                           fit: BoxFit.cover,
                         )

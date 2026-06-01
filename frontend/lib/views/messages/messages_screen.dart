@@ -15,7 +15,6 @@ class MessagesScreen extends ConsumerStatefulWidget {
 
 class _MessagesScreenState extends ConsumerState<MessagesScreen>
     with TickerProviderStateMixin {
-  // primary and cardColor are getters — always read from the live theme
   Color get primary   => Theme.of(context).primaryColor;
   Color get cardColor => Theme.of(context).cardColor;
 
@@ -26,6 +25,16 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
   bool    isLoading     = true;
   String? currentUserId;
   late TabController _tabController;
+
+  // ── Local interactivity state ──────────────────────────────────────────────
+  final Set<String> _pinned = {};   // pinned connection ids
+  String _sortBy = 'default';       // default | name | unread
+
+  static const _sortOptions = {
+    'default': 'Default',
+    'name':    'Name (A→Z)',
+    'unread':  'Unread First',
+  };
 
   @override
   void initState() {
@@ -66,9 +75,12 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
           receivedRequests = [];
 
           for (var req in allRequests) {
-            if (req['sender_id'] == currentUserId) {
+            final sid = req['sender_id']?.toString()   ?? '';
+            final rid = req['receiver_id']?.toString() ?? '';
+            final mid = currentUserId?.toString()       ?? '';
+            if (mid.isNotEmpty && sid == mid) {
               sentRequests.add(req);
-            } else if (req['receiver_id'] == currentUserId) {
+            } else if (mid.isNotEmpty && rid == mid) {
               receivedRequests.add(req);
             }
           }
@@ -94,9 +106,79 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
 
   Map<String, dynamic>? _getOtherUser(Map<String, dynamic> connection) {
     if (currentUserId == null) return null;
-    return connection['sender_id'] == currentUserId
-        ? connection['receiver']
-        : connection['sender'];
+    final isSender = connection['sender_id']?.toString() == currentUserId!.toString();
+    final raw = isSender ? connection['receiver'] : connection['sender'];
+    if (raw == null) return null;
+    return Map<String, dynamic>.from(raw as Map);
+  }
+
+  // ── Pin (favorite) toggle ─────────────────────────────────────────────────
+  void _togglePin(String connectionId) {
+    setState(() {
+      if (_pinned.contains(connectionId)) {
+        _pinned.remove(connectionId);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:  Text('Conversation unpinned'),
+          duration: Duration(seconds: 2),
+        ));
+      } else {
+        _pinned.add(connectionId);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:         Text('Conversation pinned 📌'),
+          backgroundColor: Colors.indigo,
+          duration:        Duration(seconds: 2),
+        ));
+      }
+    });
+  }
+
+  // ── Delete (hide) connection with undo ────────────────────────────────────
+  void _hideConnection(Map<String, dynamic> connection, int index) {
+    final otherUser = _getOtherUser(connection);
+    setState(() => acceptedConnections.removeAt(index));
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:  Text('${otherUser?['name'] ?? 'Connection'} hidden'),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label:     'Undo',
+          textColor: Colors.yellow,
+          onPressed: () =>
+              setState(() => acceptedConnections.insert(index, connection)),
+        ),
+      ),
+    );
+  }
+
+  // ── Sorted accepted connections ───────────────────────────────────────────
+  List<Map<String, dynamic>> get _sortedAccepted {
+    final list = List<Map<String, dynamic>>.from(acceptedConnections);
+
+    switch (_sortBy) {
+      case 'name':
+        list.sort((a, b) {
+          final aUser = _getOtherUser(a);
+          final bUser = _getOtherUser(b);
+          return (aUser?['name'] ?? '').compareTo(bUser?['name'] ?? '');
+        });
+      case 'unread':
+        list.sort((a, b) {
+          final aUnread = unreadCounts[a['id']] ?? 0;
+          final bUnread = unreadCounts[b['id']] ?? 0;
+          return bUnread.compareTo(aUnread);
+        });
+    }
+
+    // pinned always on top
+    list.sort((a, b) {
+      final aPinned = _pinned.contains(a['id']) ? 0 : 1;
+      final bPinned = _pinned.contains(b['id']) ? 0 : 1;
+      return aPinned.compareTo(bPinned);
+    });
+
+    return list;
   }
 
   void _openChat(Map<String, dynamic> connection) {
@@ -106,7 +188,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
     final TextEditingController messageController = TextEditingController();
     String? connectionId = connection['id'];
 
-    // capture theme values before entering the dialog builder
     final dialogCardColor = cardColor;
     final dialogPrimary   = primary;
     final hintColor       = Theme.of(context).textTheme.bodySmall?.color;
@@ -139,7 +220,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
               }
 
               return Dialog(
-                insetPadding: const EdgeInsets.all(16),
+                insetPadding:    const EdgeInsets.all(16),
                 backgroundColor: dialogCardColor,
                 child: Container(
                   decoration: BoxDecoration(
@@ -153,7 +234,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // ── Chat header (gradient — intentional branding) ──
+                      // ── Chat header ───────────────────────────────────
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -198,60 +279,49 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                       fontSize:   16,
                                     ),
                                   ),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width:  8,
-                                        height: 8,
-                                        decoration: BoxDecoration(
-                                          color: Colors.green[300],
-                                          shape: BoxShape.circle,
-                                        ),
+                                  Row(children: [
+                                    Container(
+                                      width:  8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: Colors.green[300],
+                                        shape: BoxShape.circle,
                                       ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Active now',
-                                        style: TextStyle(
-                                          color: Colors.white
-                                              .withValues(alpha: 0.9),
-                                          fontSize:   12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Active now',
+                                      style: TextStyle(
+                                        color: Colors.white
+                                            .withValues(alpha: 0.9),
+                                        fontSize:   12,
+                                        fontWeight: FontWeight.w500,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ]),
                                 ],
                               ),
                             ),
                             IconButton(
                               icon: const Icon(Icons.close,
                                   color: Colors.white),
-                              onPressed: () => Navigator.pop(dialogContext),
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext),
                             ),
                           ],
                         ),
                       ),
 
-                      // ── Chat area ─────────────────────────────────────
+                      // ── Chat area ────────────────────────────────────
                       Expanded(
                         child: snapshot.connectionState ==
                                 ConnectionState.waiting
                             ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    CircularProgressIndicator(
-                                      valueColor:
-                                          AlwaysStoppedAnimation<Color>(
-                                              dialogPrimary),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text('Loading messages...',
-                                        style:
-                                            TextStyle(color: hintColor)),
-                                  ],
-                                ),
-                              )
+                                child: CircularProgressIndicator(
+                                  valueColor:
+                                      AlwaysStoppedAnimation<Color>(
+                                          dialogPrimary),
+                                ))
                             : messages.isEmpty
                                 ? Center(
                                     child: Column(
@@ -281,7 +351,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                       final message = messages[index];
                                       final isMe =
                                           message.senderId == currentUserId;
-
                                       return Align(
                                         alignment: isMe
                                             ? Alignment.centerRight
@@ -290,18 +359,18 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                           margin: const EdgeInsets.only(
                                               bottom: 12),
                                           constraints: BoxConstraints(
-                                            maxWidth: MediaQuery.of(
-                                                        dialogContext)
-                                                    .size
-                                                    .width *
-                                                0.65,
+                                            maxWidth:
+                                                MediaQuery.of(dialogContext)
+                                                        .size
+                                                        .width *
+                                                    0.65,
                                           ),
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 14, vertical: 10),
+                                          padding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 14,
+                                                  vertical:   10),
                                           decoration: BoxDecoration(
-                                            color: isMe
-                                                ? null
-                                                : receivedBubble,
+                                            color: isMe ? null : receivedBubble,
                                             gradient: isMe
                                                 ? LinearGradient(colors: [
                                                     dialogPrimary,
@@ -374,8 +443,8 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                   ),
                                   focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(24),
-                                    borderSide:
-                                        BorderSide(color: dialogPrimary),
+                                    borderSide: BorderSide(
+                                        color: dialogPrimary),
                                   ),
                                   contentPadding:
                                       const EdgeInsets.symmetric(
@@ -401,13 +470,11 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                       connectionId != null) {
                                     final content = messageController.text;
                                     messageController.clear();
-
                                     final result =
                                         await MessageService.sendMessage(
                                       connectionId,
                                       content,
                                     );
-
                                     if (!result.containsKey('error')) {
                                       final newMessage = Message(
                                         id:         result['id'],
@@ -423,26 +490,20 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                                       setDialogState(() {});
                                       if (mounted) {
                                         ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Message sent! ✓'),
-                                            backgroundColor: Colors.green,
-                                            duration:
-                                                Duration(milliseconds: 800),
-                                          ),
-                                        );
+                                            .showSnackBar(const SnackBar(
+                                          content: Text('Message sent! ✓'),
+                                          backgroundColor: Colors.green,
+                                          duration:
+                                              Duration(milliseconds: 800),
+                                        ));
                                       }
-                                    } else {
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'Error: ${result['error']}'),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                      }
+                                    } else if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(SnackBar(
+                                        content: Text(
+                                            'Error: ${result['error']}'),
+                                        backgroundColor: Colors.red,
+                                      ));
                                     }
                                   }
                                 },
@@ -461,9 +522,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
       ),
     ).then((_) {
       if (mounted) {
-        setState(() {
-          unreadCounts[connectionId ?? ''] = 0;
-        });
+        setState(() => unreadCounts[connectionId ?? ''] = 0);
       }
     });
   }
@@ -475,17 +534,10 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
     final difference = nowUtc.difference(messageTimeUtc);
     final cairoTime  = messageTimeUtc.add(const Duration(hours: 2));
 
-    if (difference.inSeconds < 0)  return 'now';
-    if (difference.inSeconds < 60) return 'now';
-    if (difference.inMinutes < 60) {
-      final mins = difference.inMinutes;
-      return mins == 1 ? '1m ago' : '${mins}m ago';
-    }
-    if (difference.inHours < 24) {
-      final hours = difference.inHours;
-      return hours == 1 ? '1h ago' : '${hours}h ago';
-    }
-    if (difference.inDays == 1) {
+    if (difference.inSeconds < 60)  return 'now';
+    if (difference.inMinutes < 60)  return '${difference.inMinutes}m ago';
+    if (difference.inHours   < 24)  return '${difference.inHours}h ago';
+    if (difference.inDays    == 1) {
       return 'Yesterday '
           '${cairoTime.hour.toString().padLeft(2, '0')}:'
           '${cairoTime.minute.toString().padLeft(2, '0')}';
@@ -499,53 +551,120 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
   void _acceptRequest(int index) async {
     final request = receivedRequests[index];
     final result  = await ConnectionService.acceptConnection(request['id']);
-
     if (mounted && result.containsKey('message')) {
       setState(() {
         receivedRequests.removeAt(index);
         acceptedConnections.add(request);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:         Text('Connection accepted! 🎉'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content:         Text('Connection accepted! 🎉'),
+        backgroundColor: Colors.green,
+      ));
     }
   }
 
   void _rejectRequest(int index) async {
     final request = receivedRequests[index];
     final result  = await ConnectionService.rejectConnection(request['id']);
-
     if (mounted && result.containsKey('message')) {
       setState(() => receivedRequests.removeAt(index));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:         Text('Connection rejected'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content:         Text('Connection rejected'),
+        backgroundColor: Colors.orange,
+      ));
     }
   }
 
+  // ── Connection card (shared across all 3 tabs) ────────────────────────────
   Widget _buildConnectionCard(
     Map<String, dynamic> connection, {
     bool          canMessage  = false,
     bool          showActions = false,
     VoidCallback? onAccept,
     VoidCallback? onReject,
+    int?          listIndex,   // needed for undo
   }) {
     final otherUser = _getOtherUser(connection);
     if (otherUser == null) return const SizedBox.shrink();
 
-    final hintColor = Theme.of(context).textTheme.bodySmall?.color;
+    final hintColor  = Theme.of(context).textTheme.bodySmall?.color;
+    final connId     = connection['id'] as String;
+    final isPinned   = _pinned.contains(connId);
+    final unread     = unreadCounts[connId] ?? 0;
 
+    // Only accepted tab gets dismiss + pin
+    if (canMessage) {
+      return Dismissible(
+        key:       ValueKey(connId),
+        direction: DismissDirection.endToStart,
+        onDismissed: (_) =>
+            _hideConnection(connection, listIndex ?? 0),
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding:   const EdgeInsets.symmetric(horizontal: 20),
+          margin:    const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color:        Colors.grey[700],
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.visibility_off, color: Colors.white, size: 22),
+              SizedBox(width: 6),
+              Text('Hide',
+                  style: TextStyle(
+                      color:      Colors.white,
+                      fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+        child: _connectionCardBody(
+          connection:  connection,
+          otherUser:   otherUser,
+          hintColor:   hintColor,
+          connId:      connId,
+          isPinned:    isPinned,
+          unread:      unread,
+          canMessage:  true,
+        ),
+      );
+    }
+
+    return _connectionCardBody(
+      connection:  connection,
+      otherUser:   otherUser,
+      hintColor:   hintColor,
+      connId:      connId,
+      isPinned:    false,
+      unread:      0,
+      canMessage:  false,
+      showActions: showActions,
+      onAccept:    onAccept,
+      onReject:    onReject,
+    );
+  }
+
+  Widget _connectionCardBody({
+    required Map<String, dynamic>  connection,
+    required Map<String, dynamic>? otherUser,
+    required Color?                hintColor,
+    required String                connId,
+    required bool                  isPinned,
+    required int                   unread,
+    required bool                  canMessage,
+    bool                           showActions = false,
+    VoidCallback?                  onAccept,
+    VoidCallback?                  onReject,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color:        cardColor,
+        color: cardColor,
         borderRadius: BorderRadius.circular(14),
+        border: isPinned
+            ? Border.all(color: Colors.indigo, width: 1.5)
+            : null,
         boxShadow: [
           BoxShadow(
             color:      primary.withValues(alpha: 0.08),
@@ -569,7 +688,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                       radius:          28,
                       backgroundColor: primary.withValues(alpha: 0.15),
                       child: Text(
-                        (otherUser['name'] ?? 'U')[0].toUpperCase(),
+                        (otherUser?['name'] ?? 'U')[0].toUpperCase(),
                         style: TextStyle(
                           color:      primary,
                           fontWeight: FontWeight.bold,
@@ -597,20 +716,42 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        otherUser['name'] ?? 'Unknown User',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15),
+                      Row(
+                        children: [
+                          if (isPinned) ...[
+                            const Icon(Icons.push_pin,
+                                size: 13, color: Colors.indigo),
+                            const SizedBox(width: 4),
+                          ],
+                          Expanded(
+                            child: Text(
+                              otherUser?['name'] ?? 'Unknown User',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        otherUser['email'] ?? '',
+                        otherUser?['email'] ?? '',
                         style: TextStyle(color: hintColor, fontSize: 13),
                       ),
                     ],
                   ),
                 ),
-                if (canMessage)
+                if (canMessage) ...[
+                  // Pin button
+                  GestureDetector(
+                    onTap: () => _togglePin(connId),
+                    child: Icon(
+                      isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                      color: isPinned ? Colors.indigo : hintColor,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Unread badge
                   Container(
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
@@ -622,14 +763,14 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                     ),
                     padding: const EdgeInsets.all(6),
                     child: Text(
-                      (unreadCounts[connection['id']] ?? 0).toString(),
+                      unread.toString(),
                       style: const TextStyle(
                           color:      Colors.white,
                           fontSize:   12,
                           fontWeight: FontWeight.bold),
                     ),
-                  )
-                else if (showActions)
+                  ),
+                ] else if (showActions)
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -680,6 +821,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
   Widget build(BuildContext context) {
     final isMobile  = ResponsiveHelper.isMobile(context);
     final hintColor = Theme.of(context).textTheme.bodySmall?.color;
+    final sorted    = _sortedAccepted;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -689,6 +831,27 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
         elevation:       0,
         foregroundColor: Colors.white,
         centerTitle:     isMobile,
+        actions: [
+          // ── Sort dropdown (only meaningful for accepted tab) ───────
+          PopupMenuButton<String>(
+            icon:        const Icon(Icons.sort, color: Colors.white),
+            tooltip:     'Sort',
+            onSelected:  (v) => setState(() => _sortBy = v),
+            itemBuilder: (_) => _sortOptions.entries
+                .map((e) => PopupMenuItem(
+                      value: e.key,
+                      child: Row(children: [
+                        if (_sortBy == e.key)
+                          const Icon(Icons.check, size: 16)
+                        else
+                          const SizedBox(width: 16),
+                        const SizedBox(width: 8),
+                        Text(e.value),
+                      ]),
+                    ))
+                .toList(),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: TabBar(
@@ -746,14 +909,13 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
           : TabBarView(
               controller: _tabController,
               children: [
-                // ── Accepted ─────────────────────────────────────────
-                acceptedConnections.isEmpty
+                // ── Accepted tab ──────────────────────────────────────
+                sorted.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.person_add,
-                                size: 64, color: hintColor),
+                            Icon(Icons.person_add, size: 64, color: hintColor),
                             const SizedBox(height: 16),
                             Text('No accepted connections',
                                 style: TextStyle(
@@ -767,14 +929,16 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                       )
                     : ListView.builder(
                         padding:     const EdgeInsets.all(16),
-                        itemCount:   acceptedConnections.length,
+                        itemCount:   sorted.length,
                         itemBuilder: (context, index) =>
                             _buildConnectionCard(
-                                acceptedConnections[index],
-                                canMessage: true),
+                              sorted[index],
+                              canMessage: true,
+                              listIndex:  index,
+                            ),
                       ),
 
-                // ── Sent ─────────────────────────────────────────────
+                // ── Sent tab ──────────────────────────────────────────
                 sentRequests.isEmpty
                     ? Center(
                         child: Column(
@@ -795,7 +959,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen>
                             _buildConnectionCard(sentRequests[index]),
                       ),
 
-                // ── Received ─────────────────────────────────────────
+                // ── Received tab ──────────────────────────────────────
                 receivedRequests.isEmpty
                     ? Center(
                         child: Column(

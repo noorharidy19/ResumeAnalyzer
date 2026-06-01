@@ -7,11 +7,13 @@ import '../candidates/candidates_screen.dart';
 import '../community/community_screen.dart';
 import '../messages/messages_screen.dart';
 import '../feed/feed_screen.dart';
+import '../jobs/my_applications_screen.dart';
 import '../jobs/jobs_screen.dart';
 import '../analytics/analytics_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../profile/profile_picture_viewer.dart';
 import '../profile/my_profile_screen.dart';
+import '../settings/settings_screen.dart';
 import '../../services/message_service.dart';
 import '../../services/notification_service.dart';
 import '../cv_enhancement/cv_enhancement_screen.dart';
@@ -228,7 +230,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             auth.profilePicture!.isNotEmpty
                         ? DecorationImage(
                             image: NetworkImage(
-                              'http://172.20.10.4:8001/${auth.profilePicture!.replaceAll(r'\\', '/')}',
+                              'http://192.168.1.28:8001/${auth.profilePicture!.replaceAll(r'\\', '/')}',
                             ),
                             fit: BoxFit.cover,
                           )
@@ -298,6 +300,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               _sideItem(Icons.home,          'Dashboard',       true),
               _sideItem(Icons.work_outline, "Jobs", false),
+              _sideItem(Icons.assignment_outlined,'My Applications',  false), 
               _sideItem(Icons.person,        'My Profile',      false),
               _sideItem(Icons.description,   'Resume Analyzer', false),
               _sideItem(Icons.people,        'Candidates',      false),
@@ -308,6 +311,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               _sideItem(Icons.notifications, 'Notifications',   false,
                   badgeCount: totalUnreadNotifications),
               _sideItem(Icons.analytics,     'Analytics',       false),
+              _sideItem(Icons.settings,      'Settings',        false),
             ],
           ),
         ),
@@ -367,6 +371,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               _featureItem('📄', 'Resume Analyzer',
                   'Upload and analyze your resume with AI-powered insights'),
               _featureItem("💼", "Jobs", "Browse job openings posted by companies"),
+              _featureItem("📋", "My Applications", "Track your job applications and their status"),  // ← ADD
               _featureItem('👥', 'Candidates',
                   'Browse and connect with other professionals'),
               _featureItem('💬', 'Community',
@@ -463,6 +468,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           } else if (title == "Jobs") {
             requireAuth(() => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const JobsScreen()))); 
+          } else if (title == 'My Applications') {
+            requireAuth(() => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const MyApplicationsScreen())));
           } else if (title == 'Community') {
             requireAuth(() => Navigator.push(context,
                 MaterialPageRoute(
@@ -486,6 +494,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             requireAuth(() => Navigator.push(context,
                 MaterialPageRoute(
                     builder: (_) => const AnalyticsScreen())));
+          } else if (title == 'Settings') {
+            requireAuth(() => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const SettingsScreen())));
           }
         },
       ),

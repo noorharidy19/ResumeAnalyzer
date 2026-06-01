@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'views/home/dashboard_screen.dart';
+import 'views/auth/login_screen.dart';
+import 'views/company/company_dashboard_screen.dart';
 import 'core/theme_manager.dart';
 import 'providers/app_providers.dart';
 
@@ -16,6 +18,7 @@ void main() async {
   final name   = prefs.getString('user_name');
   final userId = prefs.getString('user_id');
   final pic    = prefs.getString('profile_picture');
+  final role   = prefs.getString('user_role') ?? 'user'; 
 
   if (token != null && email != null) {
     container.read(authProvider.notifier).restoreSession(
@@ -27,16 +30,23 @@ void main() async {
     );
   }
 
+  final Widget homeScreen = (token == null || email == null)
+    ? const LoginScreen()
+    : role == 'company'
+        ? const CompanyDashboardScreen()
+        : const DashboardScreen();
+
   runApp(
     UncontrolledProviderScope(
       container: container,
-      child:     const MyApp(),
+      child: MyApp(home: homeScreen),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final Widget home;
+  const MyApp({super.key, required this.home});
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +112,7 @@ class MyApp extends StatelessWidget {
                 ),
               ),
 
-              home: const DashboardScreen(),
+              home: home,
               builder: (context, child) {
                 final media = MediaQuery.of(context);
                 return MediaQuery(

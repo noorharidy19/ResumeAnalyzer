@@ -41,7 +41,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
     try {
       final res = await http.post(
-        Uri.parse('http://localhost:8001/auth/signup'),
+        Uri.parse('http://192.168.1.28:8001/auth/signup'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'name':         name.text.trim(),

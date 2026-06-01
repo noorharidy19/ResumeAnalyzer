@@ -179,6 +179,48 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
   }
 
+  // ── Clear all analytics data ──────────────────────────────────────────────
+  void _clearAll() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Clear Analytics?'),
+        content: const Text(
+            'This will clear all displayed analytics data. '
+            'Your saved analyses on the server are not deleted.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                history             = [];
+                fullAnalyses        = [];
+                totalResumes        = 0;
+                totalJobsMatched    = 0;
+                totalSkillsMentions = 0;
+                avgMatchScore       = 0;
+                avgExperienceYears  = 0;
+                topSkills           = {};
+                recentScores        = [];
+              });
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content:         Text('Analytics cleared. Tap refresh to reload.'),
+                backgroundColor: Colors.orange,
+                duration:        Duration(seconds: 3),
+              ));
+            },
+            child: const Text('Clear', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Metric card ────────────────────────────────────────────────────────────
   Widget _metricCard(String value, String label, IconData icon) {
     return Expanded(
@@ -227,7 +269,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         foregroundColor: Colors.white,
         title: const Text('Analytics'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadAnalytics),
+          IconButton(
+            icon:    const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _loadAnalytics,
+          ),
+          IconButton(
+            icon:    const Icon(Icons.delete_sweep_outlined),
+            tooltip: 'Clear All',
+            onPressed: _clearAll,
+          ),
         ],
       ),
       body: isLoading
