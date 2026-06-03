@@ -204,17 +204,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             userName:          auth.userName       ?? '',
                             userEmail:         auth.userEmail      ?? '',
                             onPictureUpdated: () async {
-                              await ref
-                                  .read(profileProvider.notifier)
-                                  .refresh();
+                              await ref.read(profileProvider.notifier).refresh();
                               final profile = ref.read(profileProvider);
-                              if (profile.profilePicture != null) {
-                                ref
-                                    .read(authProvider.notifier)
-                                    .updateProfilePicture(
-                                      profile.profilePicture!,
-                                    );
-                              }
+                              ref.read(authProvider.notifier).updateProfilePicture(
+                                profile.profilePicture,
+                              );
                             },
                           ),
                         );
@@ -230,7 +224,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             auth.profilePicture!.isNotEmpty
                         ? DecorationImage(
                             image: NetworkImage(
-                              'http://192.168.1.28:8001/${auth.profilePicture!.replaceAll(r'\\', '/')}',
+                              'http://192.168.1.28:8001/${auth.profilePicture!.replaceFirst(RegExp(r'^/+'), '')}',
                             ),
                             fit: BoxFit.cover,
                           )

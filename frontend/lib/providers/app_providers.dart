@@ -35,13 +35,14 @@ class AuthState {
     String? userEmail,
     String? profilePicture,
     bool? isLoggedIn,
+    bool clearProfilePicture = false,
   }) {
     return AuthState(
       token:          token          ?? this.token,
       userId:         userId         ?? this.userId,
       userName:       userName       ?? this.userName,
       userEmail:      userEmail      ?? this.userEmail,
-      profilePicture: profilePicture ?? this.profilePicture,
+      profilePicture: clearProfilePicture ? null : (profilePicture ?? this.profilePicture),
       isLoggedIn:     isLoggedIn     ?? this.isLoggedIn,
     );
   }
@@ -74,8 +75,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState(); // reset everything to empty
   }
 
-  void updateProfilePicture(String path) {
-    state = state.copyWith(profilePicture: path);
+  void updateProfilePicture(String picture) {
+    if (picture.isEmpty) {
+      state = state.copyWith(clearProfilePicture: true);
+    } else {
+      state = state.copyWith(profilePicture: picture);
+    }
   }
 
   void updateUserName(String name) {

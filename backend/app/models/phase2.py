@@ -1,11 +1,13 @@
 """
 Phase 2 — Job Matching & Recommendations
 ==========================================
-"""  
+Learning resources: Coursera API → YouTube Data API → LEARNING_MAP fallback
+"""
 from __future__ import annotations
 import re
 import json
 import math
+import base64
 import numpy as np
 from typing import Optional
 import os
@@ -26,6 +28,303 @@ except ImportError:
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+
+# ── LEARNING RESOURCE FETCHERS ────────────────────────────────────────────────
+
+_LEARNING_CACHE: dict = {}  # in-memory cache — avoids duplicate API calls per run
+
+
+# Function to get resources from coursera
+def fetch_coursera_resource(skill: str) -> dict | None:
+    """
+    Query the public Coursera API.
+    Returns the highest-rated course matching `skill`.
+    """
+    try:
+        params = {
+            "q":      "search",
+            "query":  skill,
+            "limit":  1,
+            "fields": "name,slug,avgLearningHours,avgProductRating",
+        }
+        resp = requests.get(
+            "https://api.coursera.org/api/courses.v1",
+            params=params,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        items = resp.json().get("elements", [])
+
+        if not items:
+            return None
+
+        course = items[0]
+        hours  = course.get("avgLearningHours") or 10
+        slug   = course.get("slug", "")
+        rating = course.get("avgProductRating")
+
+        return {
+            "resource": f"{course['name']} — Coursera",
+            "url":      f"https://www.coursera.org/learn/{slug}",
+            "hours":    round(float(hours)),
+            "source":   "coursera",
+            "rating":   round(float(rating), 1) if rating else None,
+        }
+
+    except Exception as e:
+        print(f"[Coursera] Error for '{skill}': {e}")
+        return None
+
+
+# function to get learning from youtube if coursera failed
+def fetch_youtube_resource(skill: str) -> dict | None:
+    """
+    Query YouTube Data API v3 for a beginner tutorial on `skill`.
+    Requires YOUTUBE_API_KEY in .env  (free — 10,000 requests/day).
+    Get key: console.cloud.google.com → Enable YouTube Data API v3 → Create API key.
+    """
+    api_key = os.getenv("YOUTUBE_API_KEY")
+
+    if not api_key:
+        print(f"[YouTube] YOUTUBE_API_KEY not set — skipping for '{skill}'")
+        return None
+
+    try:
+        params = {
+            "part":       "snippet",
+            "q":          f"{skill} tutorial for beginners",
+            "type":       "video",
+            "order":      "relevance",
+            "maxResults": 1,
+            "key":        api_key,
+        }
+        resp = requests.get(
+            "https://www.googleapis.com/youtube/v3/search",
+            params=params,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        items = resp.json().get("items", [])
+
+        if not items:
+            return None
+
+        item = items[0]
+        return {
+            "resource": f"{item['snippet']['title']} — YouTube",
+            "url":      f"https://www.youtube.com/watch?v={item['id']['videoId']}",
+            "hours":    2,        # YouTube search endpoint doesn't return duration
+            "source":   "youtube",
+            "rating":   None,
+        }
+
+    except Exception as e:
+        print(f"[YouTube] Error for '{skill}': {e}")
+        return None
+
+
+# Function apply all learning we have Coursera --> Youtube --> Hardcooded
+def get_learning_resource(skill: str) -> dict:
+    """
+    Priority chain:
+      1. In-memory cache        — avoids duplicate API calls in same run
+      2. Coursera API           — no key needed, structured courses, real duration
+      3. YouTube Data API       — needs YOUTUBE_API_KEY, great for niche skills
+      4. Hardcoded LEARNING_MAP — works with zero API keys
+      5. Generic YouTube search — absolute last resort
+    """
+    if skill in _LEARNING_CACHE:
+        return _LEARNING_CACHE[skill]
+
+    result = (
+        fetch_coursera_resource(skill)
+        or fetch_youtube_resource(skill)
+        or LEARNING_MAP.get(skill)
+        or {
+            "resource": f"Search: '{skill} tutorial' on YouTube or Coursera",
+            "url":      f"https://www.youtube.com/results?search_query={skill.replace(' ', '+')}+tutorial",
+            "hours":    10,
+            "source":   "fallback",
+            "rating":   None,
+        }
+    )
+
+    source = result.get("source", "unknown")
+    print(f"[Learning] '{skill}' → source: {source}")
+
+    _LEARNING_CACHE[skill] = result
+    return result
+
+
+# ── HARDCODED LEARNING_MAP (fallback only) ────────────────────────────────────
+LEARNING_MAP = {
+    "git": {
+        "resource": "Git & GitHub Crash Course — freeCodeCamp (YouTube, free)",
+        "url":      "https://www.youtube.com/watch?v=RGOj5yH7evk",
+        "hours":    6,
+        "source":   "hardcoded",
+    },
+    "pytorch": {
+        "resource": "fast.ai Practical Deep Learning (free)",
+        "url":      "https://course.fast.ai/",
+        "hours":    40,
+        "source":   "hardcoded",
+    },
+    "tensorflow": {
+        "resource": "TensorFlow Developer Certificate — Coursera",
+        "url":      "https://www.coursera.org/professional-certificates/tensorflow-in-practice",
+        "hours":    60,
+        "source":   "hardcoded",
+    },
+    "scikit-learn": {
+        "resource": "Scikit-learn docs + Kaggle Learn ML",
+        "url":      "https://scikit-learn.org/stable/getting_started.html",
+        "hours":    15,
+        "source":   "hardcoded",
+    },
+    "spacy": {
+        "resource": "spaCy Course (free at spacy.io/usage)",
+        "url":      "https://spacy.io/usage",
+        "hours":    10,
+        "source":   "hardcoded",
+    },
+    "fastapi": {
+        "resource": "FastAPI official tutorial",
+        "url":      "https://fastapi.tiangolo.com/tutorial/",
+        "hours":    8,
+        "source":   "hardcoded",
+    },
+    "docker": {
+        "resource": "Docker 101 — Play with Docker (free labs)",
+        "url":      "https://labs.play-with-docker.com/",
+        "hours":    10,
+        "source":   "hardcoded",
+    },
+    "aws": {
+        "resource": "AWS Cloud Practitioner — AWS Skill Builder (free)",
+        "url":      "https://explore.skillbuilder.aws/learn/course/134",
+        "hours":    30,
+        "source":   "hardcoded",
+    },
+    "postgresql": {
+        "resource": "PostgreSQL Tutorial",
+        "url":      "https://www.postgresqltutorial.com/",
+        "hours":    12,
+        "source":   "hardcoded",
+    },
+    "rest api": {
+        "resource": "REST API Design — Postman Learning Center",
+        "url":      "https://learning.postman.com/docs/designing-and-developing-your-api/the-api-workflow/",
+        "hours":    6,
+        "source":   "hardcoded",
+    },
+    "agile": {
+        "resource": "Agile Fundamentals — Coursera (Google PM cert)",
+        "url":      "https://www.coursera.org/professional-certificates/google-project-management",
+        "hours":    20,
+        "source":   "hardcoded",
+    },
+    "jira": {
+        "resource": "Atlassian Jira Fundamentals (free badge)",
+        "url":      "https://university.atlassian.com/student/path/815443-jira-fundamentals",
+        "hours":    4,
+        "source":   "hardcoded",
+    },
+    "react": {
+        "resource": "React Docs + Scrimba React course",
+        "url":      "https://react.dev/learn",
+        "hours":    30,
+        "source":   "hardcoded",
+    },
+    "opencv": {
+        "resource": "OpenCV Python tutorials",
+        "url":      "https://docs.opencv.org/4.x/d6/d00/tutorial_py_root.html",
+        "hours":    12,
+        "source":   "hardcoded",
+    },
+    "yolo": {
+        "resource": "Ultralytics YOLO docs + Roboflow tutorials",
+        "url":      "https://docs.ultralytics.com/",
+        "hours":    10,
+        "source":   "hardcoded",
+    },
+    "pandas": {
+        "resource": "Pandas Getting Started docs + Kaggle pandas course",
+        "url":      "https://pandas.pydata.org/docs/getting_started/index.html",
+        "hours":    8,
+        "source":   "hardcoded",
+    },
+    "numpy": {
+        "resource": "NumPy Quickstart tutorial",
+        "url":      "https://numpy.org/doc/stable/user/quickstart.html",
+        "hours":    5,
+        "source":   "hardcoded",
+    },
+    "generative ai": {
+        "resource": "DeepLearning.AI Short Courses (free) — Andrew Ng",
+        "url":      "https://www.deeplearning.ai/short-courses/",
+        "hours":    8,
+        "source":   "hardcoded",
+    },
+    "prompt engineering": {
+        "resource": "Anthropic Prompt Engineering Guide (free)",
+        "url":      "https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview",
+        "hours":    4,
+        "source":   "hardcoded",
+    },
+    "multi-agent": {
+        "resource": "DeepLearning.AI Multi-Agent Systems course (free)",
+        "url":      "https://www.deeplearning.ai/short-courses/multi-ai-agent-systems-with-crewai/",
+        "hours":    6,
+        "source":   "hardcoded",
+    },
+    "django": {
+        "resource": "Django Official Tutorial",
+        "url":      "https://docs.djangoproject.com/en/stable/intro/tutorial01/",
+        "hours":    15,
+        "source":   "hardcoded",
+    },
+    "linux": {
+        "resource": "Linux Foundation LFS101 (free edX)",
+        "url":      "https://www.edx.org/learn/linux/the-linux-foundation-introduction-to-linux",
+        "hours":    14,
+        "source":   "hardcoded",
+    },
+    "computer vision": {
+        "resource": "CS231n Stanford — Convolutional Neural Networks (free, YouTube)",
+        "url":      "https://www.youtube.com/playlist?list=PL3FW7Lu3i5JvHM8ljYj-zLfQRF3EO8sYv",
+        "hours":    30,
+        "source":   "hardcoded",
+    },
+    "sql": {
+        "resource": "SQLZoo + Mode Analytics SQL Tutorial (free)",
+        "url":      "https://sqlzoo.net/",
+        "hours":    10,
+        "source":   "hardcoded",
+    },
+    "mongodb": {
+        "resource": "MongoDB University — M001 Basics (free)",
+        "url":      "https://learn.mongodb.com/learning-paths/introduction-to-mongodb",
+        "hours":    8,
+        "source":   "hardcoded",
+    },
+    "vue": {
+        "resource": "Vue.js Official Tutorial",
+        "url":      "https://vuejs.org/tutorial/",
+        "hours":    12,
+        "source":   "hardcoded",
+    },
+    "kubernetes": {
+        "resource": "Kubernetes Basics — Official Interactive Tutorial",
+        "url":      "https://kubernetes.io/docs/tutorials/kubernetes-basics/",
+        "hours":    10,
+        "source":   "hardcoded",
+    },
+}
+
+
+# ── JOB FETCHING ──────────────────────────────────────────────────────────────
+
 def fetch_jobs_serpapi(query: str, location: str = "Egypt") -> list[dict]:
     api_key = os.getenv("SERPAPI_KEY")
 
@@ -35,44 +334,40 @@ def fetch_jobs_serpapi(query: str, location: str = "Egypt") -> list[dict]:
 
     try:
         params = {
-            "engine": "google_jobs",
-            "q": query,
+            "engine":   "google_jobs",
+            "q":        query,
             "location": location,
-            "api_key": api_key,
+            "api_key":  api_key,
         }
-
         response = requests.get(
             "https://serpapi.com/search",
             params=params,
-            timeout=20
+            timeout=20,
         )
         response.raise_for_status()
-
         data = response.json()
         jobs = []
 
         for job in data.get("jobs_results", []):
             description = job.get("description", "")
-
             if not description:
                 continue
             apply_options = job.get("apply_options", [])
-
             apply_link = ""
             if apply_options and isinstance(apply_options, list):
                 apply_link = apply_options[0].get("link", "")
 
             jobs.append({
-                "title": job.get("title", "Unknown Job"),
-                "company": job.get("company_name", "Unknown Company"),
-                "location": job.get("location", location),
-                "level": "Unknown",
-                "path": "External Jobs",
+                "title":       job.get("title", "Unknown Job"),
+                "company":     job.get("company_name", "Unknown Company"),
+                "location":    job.get("location", location),
+                "level":       "Unknown",
+                "path":        "External Jobs",
                 "description": description,
-                "required": [],
-                "preferred": [],
-                "source": "serpapi",
-                "apply_link": apply_link,
+                "required":    [],
+                "preferred":   [],
+                "source":      "serpapi",
+                "apply_link":  apply_link,
             })
 
         return jobs
@@ -82,28 +377,61 @@ def fetch_jobs_serpapi(query: str, location: str = "Egypt") -> list[dict]:
         print("[Jobs] Falling back to local JOB_DB.")
         return []
 
-
+#Function to fetch job from hardcoded if serp api fails
 def get_job_database(query: str = "AI Machine Learning Engineer", location: str = "Egypt") -> list[dict]:
     external_jobs = fetch_jobs_serpapi(query, location)
-
     if external_jobs:
         print(f"[Jobs] Loaded {len(external_jobs)} jobs from SerpAPI.")
         return external_jobs
-
     print(f"[Jobs] Using local JOB_DB with {len(JOB_DB)} jobs.")
     return JOB_DB
 
-    
-def build_query_from_skills(skills):
-    if "machine learning" in skills or "deep learning" in skills:
-        return "AI Machine Learning Engineer"
-    elif "nlp" in skills:
+
+#See what skills he have and translate it to jobs
+def build_query_from_skills(skills: list[str]) -> str:
+    s = set(skills)  # already lowercased by enrich_skills()
+
+    if s & {"machine learning", "deep learning", "tensorflow", "pytorch"}:
+        return "Machine Learning Engineer"
+    if "nlp" in s or "natural language processing" in s:
         return "NLP Engineer"
-    elif "computer vision" in skills:
+    if "computer vision" in s or "opencv" in s or "yolo" in s:
         return "Computer Vision Engineer"
-    else:
-        return "Software Engineer"
-    
+    if s & {"data analysis", "data science", "pandas", "tableau", "power bi"}:
+        return "Data Analyst"
+    if s & {"react", "vue", "angular", "frontend"}:
+        return "Frontend Developer"
+    if s & {"flutter", "dart"}:
+        return "Flutter Developer"
+    if s & {"react native", "android", "kotlin"}:
+        return "Android Developer"
+    if s & {"swift", "ios"}:
+        return "iOS Developer"
+    if s & {"fastapi", "django", "flask", "nodejs", "node.js"}:
+        return "Backend Developer"
+    if s & {"html", "css", "javascript"}:
+        return "Full Stack Web Developer"
+    if s & {"docker", "kubernetes", "ci/cd", "devops"}:
+        return "DevOps Engineer"
+    if s & {"aws", "azure", "gcp"}:
+        return "Cloud Engineer"
+    if s & {"cybersecurity", "penetration testing", "network security"}:
+        return "Cybersecurity Engineer"
+    if s & {"embedded systems", "arduino", "fpga"}:
+        return "Embedded Systems Engineer"
+    if s & {"java", "spring"}:
+        return "Java Developer"
+    if s & {"c++", "c"}:
+        return "C++ Developer"
+    if s & {"sql", "postgresql", "mongodb"}:
+        return "Database Developer"
+    if s & {"jmeter", "selenium", "testing"}:
+        return "QA Engineer"
+    return "Software Engineer"
+
+
+# ── LOCAL JOB DATABASE ────────────────────────────────────────────────────────
+
 JOB_DB = [
     {
         "title":       "AI / ML Engineer",
@@ -179,7 +507,6 @@ JOB_DB = [
             "Strong understanding of algorithms, data structures, and Linux environments."
         ),
         "required":  ["python", "sql", "git", "linux", "rest api"],
-        # FIX 4: removed duplicate "docker"
         "preferred": ["fastapi", "django", "docker", "postgresql", "aws", "algorithms"],
     },
     {
@@ -209,245 +536,18 @@ JOB_DB = [
             "Experience with Agile/Scrum workflows and bug tracking tools like Jira."
         ),
         "required":  ["jmeter", "python", "sql", "git"],
-        "preferred": ["java", "agile", "scrum", "jira", "rest api",
-                      "linux", "docker"],
+        "preferred": ["java", "agile", "scrum", "jira", "rest api", "linux", "docker"],
     },
 ]
 
 
-# ── LEARNING_MAP ─────────────────────────────────────────────────────────────
-# ─────────────────────────────────────────────────────────────────────────────
-LEARNING_MAP = {
-    "git": {
-        "resource": "Git & GitHub Crash Course — freeCodeCamp (YouTube, free)",
-        "url":      "https://www.youtube.com/watch?v=RGOj5yH7evk",
-        "hours":    6,
-    },
-    "pytorch": {
-        "resource": "fast.ai Practical Deep Learning (free)",
-        "url":      "https://course.fast.ai/",
-        "hours":    40,
-    },
-    "tensorflow": {
-        "resource": "TensorFlow Developer Certificate — Coursera",
-        "url":      "https://www.coursera.org/professional-certificates/tensorflow-in-practice",
-        "hours":    60,
-    },
-    "scikit-learn": {
-        "resource": "Scikit-learn docs + Kaggle Learn ML",
-        "url":      "https://scikit-learn.org/stable/getting_started.html",
-        "hours":    15,
-    },
-    "spacy": {
-        "resource": "spaCy Course (free at spacy.io/usage)",
-        "url":      "https://spacy.io/usage",
-        "hours":    10,
-    },
-    "fastapi": {
-        "resource": "FastAPI official tutorial",
-        "url":      "https://fastapi.tiangolo.com/tutorial/",
-        "hours":    8,
-    },
-    "docker": {
-        "resource": "Docker 101 — Play with Docker (free labs)",
-        "url":      "https://labs.play-with-docker.com/",
-        "hours":    10,
-    },
-    "aws": {
-        "resource": "AWS Cloud Practitioner — AWS Skill Builder (free)",
-        "url":      "https://explore.skillbuilder.aws/learn/course/134",
-        "hours":    30,
-    },
-    "postgresql": {
-        "resource": "PostgreSQL Tutorial",
-        "url":      "https://www.postgresqltutorial.com/",
-        "hours":    12,
-    },
-    "rest api": {
-        "resource": "REST API Design — Postman Learning Center",
-        "url":      "https://learning.postman.com/docs/designing-and-developing-your-api/the-api-workflow/",
-        "hours":    6,
-    },
-    "agile": {
-        "resource": "Agile Fundamentals — Coursera (Google PM cert)",
-        "url":      "https://www.coursera.org/professional-certificates/google-project-management",
-        "hours":    20,
-    },
-    "jira": {
-        "resource": "Atlassian Jira Fundamentals (free badge)",
-        "url":      "https://university.atlassian.com/student/path/815443-jira-fundamentals",
-        "hours":    4,
-    },
-    "react": {
-        "resource": "React Docs + Scrimba React course",
-        "url":      "https://react.dev/learn",
-        "hours":    30,
-    },
-    "opencv": {
-        "resource": "OpenCV Python tutorials",
-        "url":      "https://docs.opencv.org/4.x/d6/d00/tutorial_py_root.html",
-        "hours":    12,
-    },
-    "yolo": {
-        "resource": "Ultralytics YOLO docs + Roboflow tutorials",
-        "url":      "https://docs.ultralytics.com/",
-        "hours":    10,
-    },
-    "pandas": {
-        "resource": "Pandas Getting Started docs + Kaggle pandas course",
-        "url":      "https://pandas.pydata.org/docs/getting_started/index.html",
-        "hours":    8,
-    },
-    "numpy": {
-        "resource": "NumPy Quickstart tutorial",
-        "url":      "https://numpy.org/doc/stable/user/quickstart.html",
-        "hours":    5,
-    },
-    "generative ai": {
-        "resource": "DeepLearning.AI Short Courses (free) — Andrew Ng",
-        "url":      "https://www.deeplearning.ai/short-courses/",
-        "hours":    8,
-    },
-    "prompt engineering": {
-        "resource": "Anthropic Prompt Engineering Guide (free)",
-        "url":      "https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview",
-        "hours":    4,
-    },
-    "multi-agent": {
-        "resource": "DeepLearning.AI Multi-Agent Systems course (free)",
-        "url":      "https://www.deeplearning.ai/short-courses/multi-ai-agent-systems-with-crewai/",
-        "hours":    6,
-    },
-    "django": {
-        "resource": "Django Official Tutorial",
-        "url":      "https://docs.djangoproject.com/en/stable/intro/tutorial01/",
-        "hours":    15,
-    },
-    "linux": {
-        "resource": "Linux Foundation LFS101 (free edX)",
-        "url":      "https://www.edx.org/learn/linux/the-linux-foundation-introduction-to-linux",
-        "hours":    14,
-    },
-    "computer vision": {
-        "resource": "CS231n Stanford — Convolutional Neural Networks (free, YouTube)",
-        "url":      "https://www.youtube.com/playlist?list=PL3FW7Lu3i5JvHM8ljYj-zLfQRF3EO8sYv",
-        "hours":    30,
-    },
-    "sql": {
-        "resource": "SQLZoo + Mode Analytics SQL Tutorial (free)",
-        "url":      "https://sqlzoo.net/",
-        "hours":    10,
-    },
-    "mongodb": {
-        "resource": "MongoDB University — M001 Basics (free)",
-        "url":      "https://learn.mongodb.com/learning-paths/introduction-to-mongodb",
-        "hours":    8,
-    },
-    "vue": {
-        "resource": "Vue.js Official Tutorial",
-        "url":      "https://vuejs.org/tutorial/",
-        "hours":    12,
-    },
-    "kubernetes": {
-        "resource": "Kubernetes Basics — Official Interactive Tutorial",
-        "url":      "https://kubernetes.io/docs/tutorials/kubernetes-basics/",
-        "hours":    10,
-    },
-}
+# ── SKILL NORMALIZATION ───────────────────────────────────────────────────────
 
-
-def build_profile_text(phase1: dict) -> str:
-    parts = []
-
-    if phase1.get("skills"):
-        skills_str = " ".join(phase1["skills"])
-        parts.append(f"Skills: {skills_str}. {skills_str}. {skills_str}.")
-
-    for proj in phase1.get("projects", []):
-        parts.append(f"Project: {proj}.")
-
-    for edu in phase1.get("education", []):
-        if edu.get("degree"):
-            parts.append(f"Education: {edu['degree']}.")
-
-    exp = phase1.get("experience_years", 0)
-    internships = phase1.get("internship_count", 0)
-    if internships:
-        parts.append(f"Professional experience: {internships} internships, {exp} years.")
-
-    return " ".join(parts)
-
-class HybridMatchingEngine:
-    def __init__(self, jobs_db: list[dict], use_st: bool = True):
-        self.jobs_db = jobs_db
-        self.job_texts = [j["description"] for j in jobs_db]
-        self.backend = "none"
-
-        # TF-IDF
-        self.tfidf = TfidfVectorizer(ngram_range=(1, 2), min_df=1)
-        self.tfidf_matrix = self.tfidf.fit_transform(self.job_texts) # convert all jpb description to vector numbers
-
-        # Sentence Transformers
-        self.use_st = use_st and _ST_AVAILABLE
-        self.st_model = None
-        self.st_embeddings = None
-
-        if self.use_st:
-            print("[Phase 2] Loading Sentence Transformer...")
-            print("LOADING MODEL...")
-            self.st_model = SentenceTransformer("all-MiniLM-L6-v2",device="cpu")
-            print("MODEL LOADED")
-            self.st_embeddings = self.st_model.encode(
-                self.job_texts,
-                convert_to_numpy=True,
-                normalize_embeddings=True
-            )
-            self.backend = "sentence-transformers"
-        else:
-            self.backend = "tfidf" 
-
-        print(f"[Phase 2] Hybrid engine ready | ST enabled: {self.use_st}")
-
-    def search(self, query_text: str, top_k: int = 3):
-        top_k = min(top_k, len(self.jobs_db))
-
-        # TF-IDF score
-        q_tfidf = self.tfidf.transform([query_text])
-        tfidf_scores = cosine_similarity(q_tfidf, self.tfidf_matrix)[0] * 100
-
-        # Semantic score
-        if self.use_st:
-            q_emb = self.st_model.encode(
-                [query_text],
-                convert_to_numpy=True,
-                normalize_embeddings=True
-            )
-            semantic_scores = cosine_similarity(q_emb, self.st_embeddings)[0] * 100
-        else:
-            semantic_scores = tfidf_scores
-
-        combined = []
-        for i in range(len(self.jobs_db)):
-            combined.append({
-                "job_idx": i,
-                "tfidf_score": float(tfidf_scores[i]),
-                "semantic_score": float(semantic_scores[i]),
-            })
-
-        combined.sort(
-            key=lambda x: (0.4 * x["tfidf_score"]) + (0.6 * x["semantic_score"]),
-            reverse=True
-        )
-
-        return combined[:top_k]
-
-# Skill aliases for normalization
 SKILL_ALIASES = {
     "github": "git",
     "node.js": "nodejs",
 }
 
-# Skill inference rules: if candidate has skill X, we can infer they likely have related skill Y
 SKILL_INFERENCE = {
     "yolo":             ["computer vision", "opencv"],
     "image processing": ["computer vision", "opencv"],
@@ -458,6 +558,7 @@ SKILL_INFERENCE = {
     "nlp":              ["python"],
 }
 
+
 def enrich_skills(skills: list[str]) -> list[str]:
     enriched = set(SKILL_ALIASES.get(s.lower(), s.lower()) for s in skills)
     for skill in list(enriched):
@@ -465,21 +566,94 @@ def enrich_skills(skills: list[str]) -> list[str]:
             enriched.add(implied)
     return sorted(enriched)
 
-def compute_skill_gap(candidate_skills: list[str], job: dict) -> dict:
-    candidate = set(
-    SKILL_ALIASES.get(s.lower(), s.lower())
-    for s in candidate_skills
-    )
-    required  = set(job["required"])
-    preferred = set(job["preferred"])
 
+# ── PROFILE & MATCHING ────────────────────────────────────────────────────────
+
+#Convert profile to text to make job matching
+def build_profile_text(phase1: dict) -> str:
+    parts = []
+    if phase1.get("skills"):
+        skills_str = " ".join(phase1["skills"])
+        parts.append(f"Skills: {skills_str}. {skills_str}. {skills_str}.")
+    for proj in phase1.get("projects", []):
+        parts.append(f"Project: {proj}.")
+    for edu in phase1.get("education", []):
+        if edu.get("degree"):
+            parts.append(f"Education: {edu['degree']}.")
+    exp        = phase1.get("experience_years", 0)
+    internships = phase1.get("internship_count", 0)
+    if internships:
+        parts.append(f"Professional experience: {internships} internships, {exp} years.")
+    return " ".join(parts)
+
+#Using TFIDF and Sentence transformer to make job matching and produce 2 scores
+class HybridMatchingEngine:
+    def __init__(self, jobs_db: list[dict], use_st: bool = True):
+        self.jobs_db   = jobs_db
+        self.job_texts = [j["description"] for j in jobs_db]
+        self.backend   = "none"
+
+        self.tfidf        = TfidfVectorizer(ngram_range=(1, 2), min_df=1)
+        self.tfidf_matrix = self.tfidf.fit_transform(self.job_texts)
+
+        self.use_st      = use_st and _ST_AVAILABLE
+        self.st_model    = None
+        self.st_embeddings = None
+
+        if self.use_st:
+            print("[Phase 2] Loading Sentence Transformer...")
+            self.st_model = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
+            self.st_embeddings = self.st_model.encode(
+                self.job_texts,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+            )
+            self.backend = "sentence-transformers"
+        else:
+            self.backend = "tfidf"
+
+        print(f"[Phase 2] Hybrid engine ready | ST enabled: {self.use_st}")
+
+    def search(self, query_text: str, top_k: int = 3):
+        top_k     = min(top_k, len(self.jobs_db))
+        q_tfidf   = self.tfidf.transform([query_text])
+        tfidf_scores = cosine_similarity(q_tfidf, self.tfidf_matrix)[0] * 100
+
+        if self.use_st:
+            q_emb = self.st_model.encode(
+                [query_text],
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+            )
+            semantic_scores = cosine_similarity(q_emb, self.st_embeddings)[0] * 100
+        else:
+            semantic_scores = tfidf_scores
+
+        combined = [
+            {
+                "job_idx":        i,
+                "tfidf_score":    float(tfidf_scores[i]),
+                "semantic_score": float(semantic_scores[i]),
+            }
+            for i in range(len(self.jobs_db))
+        ]
+        combined.sort(
+            key=lambda x: (0.4 * x["tfidf_score"]) + (0.6 * x["semantic_score"]),
+            reverse=True,
+        )
+        return combined[:top_k]
+
+
+#To find gaps between the user skills and each job skills required and prefered
+def compute_skill_gap(candidate_skills: list[str], job: dict) -> dict:
+    candidate    = set(SKILL_ALIASES.get(s.lower(), s.lower()) for s in candidate_skills)
+    required     = set(job["required"])
+    preferred    = set(job["preferred"])
     matched_req  = sorted(candidate & required)
     missing_req  = sorted(required - candidate)
     matched_pref = sorted(candidate & preferred)
     missing_pref = sorted(preferred - candidate)
-
-    coverage = round(len(matched_req) / len(required) * 100) if required else 0
-
+    coverage     = round(len(matched_req) / len(required) * 100) if required else 0
     return {
         "matched_required":  matched_req,
         "missing_required":  missing_req,
@@ -495,43 +669,30 @@ def compute_hybrid_match_score(
     gap: dict,
     experience_years: float,
     job_level: str,
-    internship_count=0
+    internship_count: int = 0,
 ) -> int:
-    tfidf = min(tfidf_score, 100)
-    semantic = min(semantic_score, 100)
+    tfidf       = min(tfidf_score, 100)
+    semantic    = min(semantic_score, 100)
     skill_score = gap["coverage_pct"]
-
     level_lower = job_level.lower()
 
     if "junior" in level_lower:
-        if internship_count >= 2:
-            exp_score = 100  
-        elif internship_count == 1:
-            exp_score = 90    
-        elif experience_years >= 1:
-            exp_score = 85    
-        else:
-            exp_score = 70    
+        if internship_count >= 2:   exp_score = 100
+        elif internship_count == 1: exp_score = 90
+        elif experience_years >= 1: exp_score = 85
+        else:                       exp_score = 70
     elif "mid" in level_lower:
-        exp_score = 60 if experience_years < 1 else 75   
+        exp_score = 60 if experience_years < 1 else 75
     else:
-        exp_score = 30   
+        exp_score = 30
 
-    final = (
-        0.10 * tfidf +
-        0.25 * semantic +   
-        0.55 * skill_score +
-        0.10 * exp_score
-    )
-    penalty = len(gap["missing_required"]) * 2   
-    final = final - penalty                     
-
-    return round(max(0, min(final, 100)))   
-
+    final   = (0.10 * tfidf + 0.25 * semantic + 0.55 * skill_score + 0.10 * exp_score)
+    penalty = len(gap["missing_required"]) * 2
+    return round(max(0, min(final - penalty, 100)))
 
 
 def compute_readiness(gap: dict, career_level: str, internship_count: int) -> dict:
-    coverage = gap["coverage_pct"]
+    coverage    = gap["coverage_pct"]
     missing_req = gap["missing_required"]
 
     if coverage >= 80 and len(missing_req) == 0:
@@ -548,6 +709,11 @@ def compute_readiness(gap: dict, career_level: str, internship_count: int) -> di
 
 
 def build_recommendations(matches: list[dict], candidate_skills: list[str]) -> list[dict]:
+    """
+    Collect missing skills from all matched jobs, rank by frequency,
+    then fetch a real learning resource for each via:
+      Coursera → YouTube → LEARNING_MAP → generic fallback
+    """
     skill_freq: dict[str, int] = {}
     for match in matches:
         gap = match["skill_gap"]
@@ -560,17 +726,13 @@ def build_recommendations(matches: list[dict], candidate_skills: list[str]) -> l
         return []
 
     ranked = sorted(skill_freq.items(), key=lambda x: x[1], reverse=True)
+    recs   = []
 
-    recs = []
     for skill, freq in ranked:
         priority = "High" if freq >= 4 else ("Medium" if freq >= 2 else "Low")
-        info = LEARNING_MAP.get(skill, {
-            "resource": f"Search: '{skill} tutorial' on YouTube or Coursera",
-            "url":      f"https://www.youtube.com/results?search_query={skill.replace(' ', '+')}+tutorial",
-            "hours":    10,
-        })
+        info     = get_learning_resource(skill)   # ← live API call here
+        needed   = math.ceil(freq / 2)
 
-        needed = math.ceil(freq / 2)
         recs.append({
             "skill":          skill,
             "priority":       priority,
@@ -578,36 +740,31 @@ def build_recommendations(matches: list[dict], candidate_skills: list[str]) -> l
             "resource":       info["resource"],
             "url":            info["url"],
             "est_hours":      info["hours"],
+            "source":         info.get("source", "unknown"),
+            "rating":         info.get("rating"),
         })
 
     return recs
 
 
 def detect_career_level(phase1: dict) -> str:
-    exp = phase1.get("experience_years", 0)
-    projs = len(phase1.get("projects", []))
+    exp        = phase1.get("experience_years", 0)
+    projs      = len(phase1.get("projects", []))
     internships = phase1.get("internship_count", 0)
-    edu = phase1.get("education", [{}])
-    gpa = edu[0].get("gpa") if edu else None
+    edu        = phase1.get("education", [{}])
+    gpa        = edu[0].get("gpa") if edu else None
 
-    # strong junior first (priority condition)
     if exp >= 1 or internships >= 2 or projs >= 5:
-        return "Junior (Strong)"  
-
-    # junior condition
+        return "Junior (Strong)"
     if exp > 0 or internships == 1 or projs >= 3 or (gpa and gpa >= 3.5):
-        return "Junior"   
-
-    # mid-level only if real experience
+        return "Junior"
     if exp >= 3:
-        return "Mid-level" 
+        return "Mid-level"
+    return "Entry-level / Student"
 
-    # fallback
-    return "Entry-level / Student"   
 
 def extract_required_skills_from_description(description: str) -> list[str]:
-    text = description.lower()
-
+    text   = description.lower()
     skills = [
         "python", "java", "javascript", "sql", "html", "css",
         "machine learning", "deep learning", "nlp", "computer vision",
@@ -615,31 +772,47 @@ def extract_required_skills_from_description(description: str) -> list[str]:
         "aws", "git", "github", "fastapi", "django", "react",
         "nodejs", "postgresql", "mongodb", "linux", "opencv",
         "spacy", "scikit-learn", "rest api", "kubernetes",
-        "flask", "django", "jira", "agile"
+        "flask", "django", "jira", "agile",
     ]
-
-    found = [
-        skill for skill in skills
-        if re.search(r"\b" + re.escape(skill) + r"\b", text)
-    ]
-
+    found = [s for s in skills if re.search(r"\b" + re.escape(s) + r"\b", text)]
     if "github" in found and "git" not in found:
         found.append("git")
-
     return sorted(set(found))
+
 
 def filter_jobs_by_level(jobs: list[dict], career_level: str) -> list[dict]:
     if "Junior" in career_level:
         return [
             job for job in jobs
-            if "senior" not in job.get("title", "").lower()
-            and "lead" not in job.get("title", "").lower()
+            if "senior"    not in job.get("title", "").lower()
+            and "lead"     not in job.get("title", "").lower()
             and "principal" not in job.get("title", "").lower()
         ]
     return jobs
 
-def run_phase2(phase1_result: dict, top_k: int = 3,use_external_jobs: bool = True,
-    location: str = "Egypt") -> dict:
+
+def _explain_fit(gap: dict, job: dict, career_level: str) -> str:
+    matched = gap["matched_required"]
+    missing = gap["missing_required"]
+    cov     = gap["coverage_pct"]
+    fit     = "Strong fit" if cov >= 80 else ("Good fit" if cov >= 50 else "Partial fit")
+    has     = ", ".join(matched[:3]) + ("…" if len(matched) > 3 else "") if matched else "none yet"
+    lacks   = ", ".join(missing[:3]) + ("…" if len(missing) > 3 else "") if missing else "none"
+    return (
+        f"{fit} — covers {cov}% of required skills. "
+        f"Has: {has}. "
+        f"Still needs: {lacks}."
+    )
+
+
+# ── MAIN PHASE 2 RUNNER ───────────────────────────────────────────────────────
+
+def run_phase2(
+    phase1_result: dict,
+    top_k: int = 3,
+    use_external_jobs: bool = True,
+    location: str = "Egypt",
+) -> dict:
     print("\n[Phase 2] Starting job matching…")
 
     profile_text     = build_profile_text(phase1_result)
@@ -647,8 +820,7 @@ def run_phase2(phase1_result: dict, top_k: int = 3,use_external_jobs: bool = Tru
     experience_years = phase1_result.get("experience_years", 0)
     career_level     = detect_career_level(phase1_result)
 
-
-    # 2) Build search query dynamically from candidate skills
+    # Build search query from candidate skills
     if "machine learning" in candidate_skills or "deep learning" in candidate_skills:
         query = "AI Machine Learning Engineer"
     elif "nlp" in candidate_skills:
@@ -659,41 +831,32 @@ def run_phase2(phase1_result: dict, top_k: int = 3,use_external_jobs: bool = Tru
         query = "Full Stack Web Developer"
     else:
         query = "Software Engineer"
-    
-    # 3) Get jobs: SerpAPI first, fallback to local JOB_DB
-    if use_external_jobs:
-        jobs_db = get_job_database(query=query, location=location)
-    else:
-        jobs_db = JOB_DB
 
+    jobs_db = get_job_database(query=query, location=location) if use_external_jobs else JOB_DB
     jobs_db = filter_jobs_by_level(jobs_db, career_level)
 
-    # 4) Extract required skills from external job descriptions if missing
     for job in jobs_db:
         if not job.get("required"):
-            job["required"] = extract_required_skills_from_description(
-                job.get("description", "")
-            )
-
+            job["required"] = extract_required_skills_from_description(job.get("description", ""))
         if not job.get("preferred"):
             job["preferred"] = []
 
     engine = HybridMatchingEngine(jobs_db=jobs_db, use_st=True)
 
-    print(f"[Phase 2] Profile text length: {len(profile_text.split())} words")
+    print(f"[Phase 2] Profile text length  : {len(profile_text.split())} words")
     print(f"[Phase 2] Career level detected: {career_level}")
-    print(f"[Phase 2] Search query: {query}")
-    print(f"[Phase 2] Jobs loaded: {len(jobs_db)}")
-    print(f"[Phase 2] Embedding backend: {engine.backend}")
+    print(f"[Phase 2] Search query         : {query}")
+    print(f"[Phase 2] Jobs loaded          : {len(jobs_db)}")
+    print(f"[Phase 2] Embedding backend    : {engine.backend}")
 
-    raw_results =engine.search(profile_text, top_k=top_k)
+    raw_results = engine.search(profile_text, top_k=top_k)
+    matches     = []
 
-    matches = []
     for item in raw_results:
-        job_idx = item["job_idx"]
-        job   = jobs_db[job_idx]
-        gap   = compute_skill_gap(candidate_skills, job)
-        tfidf_score = item["tfidf_score"]
+        job_idx        = item["job_idx"]
+        job            = jobs_db[job_idx]
+        gap            = compute_skill_gap(candidate_skills, job)
+        tfidf_score    = item["tfidf_score"]
         semantic_score = item["semantic_score"]
 
         score = compute_hybrid_match_score(
@@ -703,37 +866,34 @@ def run_phase2(phase1_result: dict, top_k: int = 3,use_external_jobs: bool = Tru
             experience_years=experience_years,
             job_level=job["level"],
             internship_count=phase1_result.get("internship_count", 0),
-    )
+        )
 
         matches.append({
             "rank":           len(matches) + 1,
             "title":          job["title"],
-            "company": job.get("company", "N/A"),
-            "apply_link": job.get("apply_link", ""),
-            "location": job.get("location", location),
+            "company":        job.get("company", "N/A"),
+            "apply_link":     job.get("apply_link", ""),
+            "location":       job.get("location", location),
             "career_path":    job["path"],
             "level":          job["level"],
-            "source": job.get("source", "local"),
+            "source":         job.get("source", "local"),
             "match_score":    score,
-            "tfidf_score": round(tfidf_score, 1),
+            "tfidf_score":    round(tfidf_score, 1),
             "semantic_score": round(semantic_score, 1),
             "skill_gap":      gap,
             "why_good_fit":   _explain_fit(gap, job, career_level),
-            "readiness": compute_readiness(
-                gap, 
-                career_level, 
-                phase1_result.get("internship_count", 0)
-            ),
-     })
+            "readiness":      compute_readiness(gap, career_level, phase1_result.get("internship_count", 0)),
+        })
 
     matches.sort(key=lambda x: x["match_score"], reverse=True)
     for i, m in enumerate(matches):
         m["rank"] = i + 1
 
+    # ── build recommendations with live Coursera / YouTube resources ──
+    print("\n[Phase 2] Fetching learning resources…")
     recommendations = build_recommendations(matches, candidate_skills)
 
-    top = matches[0]
-    # FIX 9: safe check on recommendations list
+    top     = matches[0]
     top_gap = recommendations[0]["skill"] if recommendations else "none"
     summary = (
         f"{phase1_result.get('basic_info', {}).get('name') or phase1_result.get('name', 'The candidate')} "
@@ -744,7 +904,6 @@ def run_phase2(phase1_result: dict, top_k: int = 3,use_external_jobs: bool = Tru
 
     print(f"[Phase 2] Done — top match: {top['title']} ({top['match_score']}%)")
 
-    # ADDED — compute confidence score before return
     def _compute_confidence(phase1: dict, matches: list) -> int:
         score = 0
         if phase1.get("name"):      score += 15
@@ -753,42 +912,26 @@ def run_phase2(phase1_result: dict, top_k: int = 3,use_external_jobs: bool = Tru
         if phase1.get("projects"):  score += 15
         if phase1.get("education"): score += 10
         if matches:
-            top_match = matches[0]["match_score"]
-            score += int(top_match * 0.30)  # up to 30 points from match quality
+            score += int(matches[0]["match_score"] * 0.30)
         return min(score, 100)
-    
+
     return {
         "career_level":      career_level,
         "embedding_backend": engine.backend,
-        "query_used": query,
-        "jobs_source": "external_serpapi_or_fallback" if use_external_jobs else "local_JOB_DB",
-        "matches": matches,
+        "query_used":        query,
+        "jobs_source":       "external_serpapi_or_fallback" if use_external_jobs else "local_JOB_DB",
+        "matches":           matches,
         "recommendations":   recommendations,
         "summary":           summary,
-        "confidence_score": _compute_confidence(phase1_result, matches),
-        # FIX 10: include profile_text for Phase 3 RAG context
+        "confidence_score":  _compute_confidence(phase1_result, matches),
         "profile_text":      profile_text,
     }
 
 
-def _explain_fit(gap: dict, job: dict, career_level: str) -> str:
-    matched = gap["matched_required"]
-    missing = gap["missing_required"]
-    cov     = gap["coverage_pct"]
-
-    fit  = "Strong fit" if cov >= 80 else ("Good fit" if cov >= 50 else "Partial fit")
-    has  = ", ".join(matched[:3]) + ("…" if len(matched) > 3 else "") if matched else "none yet"
-    lacks = ", ".join(missing[:3]) + ("…" if len(missing) > 3 else "") if missing else "none"
-
-    return (
-        f"{fit} — covers {cov}% of required skills. "
-        f"Has: {has}. "
-        f"Still needs: {lacks}."
-    )
-
+# ── CLI ENTRY POINT ───────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import sys, os
+    import sys
     sys.path.insert(0, os.path.dirname(__file__))
 
     try:
@@ -799,6 +942,7 @@ if __name__ == "__main__":
         print("[Phase 1] Done.\n")
     except Exception as e:
         print(f"[Phase 1] Could not run phase1 ({e})")
+        phase1_result = {}
 
     result = run_phase2(phase1_result, top_k=3)
 
@@ -813,10 +957,10 @@ if __name__ == "__main__":
     for m in result["matches"]:
         g = m["skill_gap"]
         print(f"\n  #{m['rank']}  {m['title']}  [{m['level']}]")
-        print(f"       Source        : {m['source']}")
-        print(f"       Company       : {m['company']}")
-        print(f"       Apply link    : {m['apply_link']}")
-        print(f"       Location      : {m['location']}")
+        print(f"       Source         : {m['source']}")
+        print(f"       Company        : {m['company']}")
+        print(f"       Apply link     : {m['apply_link']}")
+        print(f"       Location       : {m['location']}")
         print(f"       Match score    : {m['match_score']}%")
         print(f"       Semantic score : {m['semantic_score']}%")
         print(f"       Skill coverage : {g['coverage_pct']}% of required")
@@ -826,11 +970,12 @@ if __name__ == "__main__":
         print(f"       Why fits       : {m['why_good_fit']}")
         print(f"       Readiness      : {m['readiness']['status']} — {m['readiness']['reason']}")
 
-
     print("\n── LEARNING RECOMMENDATIONS ─────────────────────────────────")
     for r in result["recommendations"]:
+        rating_str = f" ⭐ {r['rating']}" if r.get("rating") else ""
         print(f"\n  [{r['priority']:6}]  {r['skill']}")
         print(f"             Needed in {r['needed_in_jobs']} matched job(s)")
+        print(f"             Source   : {r['source']}{rating_str}")
         print(f"             Resource : {r['resource']}")
         print(f"             URL      : {r['url']}")
         print(f"             Est. time: ~{r['est_hours']} hours")

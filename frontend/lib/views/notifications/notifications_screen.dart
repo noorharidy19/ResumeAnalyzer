@@ -75,23 +75,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   // ── Delete with undo ──────────────────────────────────────────────────────
   void _deleteNotification(notif_service.Notification notif, int index) {
-    setState(() => notifications.removeAt(index));
+  setState(() => notifications.removeAt(index));
 
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Notification deleted'),
-        duration: const Duration(seconds: 4),
-        action: SnackBarAction(
-          label: 'Undo',
-          textColor: Colors.yellow,
-          onPressed: () {
-            setState(() => notifications.insert(index, notif));
-          },
-        ),
+  bool undone = false;
+
+  ScaffoldMessenger.of(context).clearSnackBars();
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content:  const Text('Notification deleted'),
+      duration: const Duration(seconds: 4),
+      action: SnackBarAction(
+        label:     'Undo',
+        textColor: Colors.yellow,
+        onPressed: () {
+          undone = true;
+          setState(() => notifications.insert(index, notif));
+        },
       ),
-    );
-  }
+    ),
+  ).closed.then((_) async {
+    if (!undone) {
+      await notif_service.NotificationService.deleteNotification(notif.id);
+    }
+  });
+}
 
   // ── Sorted list ───────────────────────────────────────────────────────────
   List<notif_service.Notification> get _sorted {

@@ -67,8 +67,6 @@ def get_user(
     
     return user
 
-BASE_URL = "http://192.168.1.5:8001"  # ✅ add this near the top of the file
-
 @router.post("/profile-picture/upload")
 async def upload_profile_picture(
     file: UploadFile = File(...),
@@ -103,22 +101,20 @@ async def upload_profile_picture(
             raise HTTPException(status_code=404, detail="User not found")
 
         if user.profile_picture:
-            # Extract local path from old URL if needed
-            old_path = user.profile_picture.replace(f"{BASE_URL}/", "")
+            old_path = user.profile_picture.lstrip('/')
             if os.path.exists(old_path):
                 try:
                     os.remove(old_path)
                 except:
                     pass
 
-        # ✅ Save full URL to DB
-        full_url = f"{BASE_URL}/{filepath}"
-        user.profile_picture = full_url
+        relative_path = f"/uploads/profiles/{filename}"
+        user.profile_picture = relative_path
         db.commit()
 
         return {
             "message": "Profile picture uploaded successfully",
-            "profile_picture": full_url
+            "profile_picture": relative_path
         }
     except HTTPException:
         raise
@@ -139,11 +135,13 @@ def delete_profile_picture(
         raise HTTPException(status_code=404, detail="User not found")
 
     try:
-        if user.profile_picture and os.path.exists(user.profile_picture):
-            try:
-                os.remove(user.profile_picture)
-            except Exception:
-                pass
+        if user.profile_picture:
+            old_path = user.profile_picture.lstrip('/')
+            if os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                except Exception:
+                    pass
 
         user.profile_picture = None
         db.commit()

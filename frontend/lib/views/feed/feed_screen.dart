@@ -141,22 +141,38 @@ class _FeedScreenState extends State<FeedScreen> {
 
   // ── Delete own post with undo ─────────────────────────────────────────────
   void _deletePost(Post post, int index) {
-    setState(() => posts.removeAt(index));
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content:  const Text('Post deleted'),
-        duration: const Duration(seconds: 4),
-        action: SnackBarAction(
-          label:     'Undo',
-          textColor: Colors.yellow,
-          onPressed: () => setState(() => posts.insert(index, post)),
-        ),
+  setState(() => posts.removeAt(index));
+
+  bool undone = false;
+
+  ScaffoldMessenger.of(context).clearSnackBars();
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content:  const Text('Post deleted'),
+      duration: const Duration(seconds: 4),
+      action: SnackBarAction(
+        label:     'Undo',
+        textColor: Colors.yellow,
+        onPressed: () {
+          undone = true;
+          setState(() => posts.insert(index, post));
+        },
       ),
-    );
-    // TODO: call PostService.deletePost(post.id) if no undo is clicked
-    // You can use a delayed future to do the real delete after 4 seconds
-  }
+    ),
+  ).closed.then((_) async {
+    if (!undone) {
+      final result = await PostService.deletePost(post.id);
+      if (result.containsKey('error') && mounted) {
+        // Restore the post if API call failed
+        setState(() => posts.insert(index, post));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content:         Text('Failed to delete: ${result['error']}'),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
+  });
+}
 
   // ── Hide post (all-posts tab, local only) ────────────────────────────────
   void _hidePost(Post post) {
@@ -252,7 +268,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               valueColor: AlwaysStoppedAnimation(primaryColor)));
                     }
                     final comments =
-                        (snap.data!['comments'] as List<dynamic>?) ?? [];
+                        (snap.data!['comments'] as List<Comment>?) ?? [];
                     if (comments.isEmpty) {
                       return Center(
                           child: Text('No comments yet',
@@ -264,23 +280,20 @@ class _FeedScreenState extends State<FeedScreen> {
                       separatorBuilder: (_, __) =>
                           Divider(color: dividerColor),
                       itemBuilder: (_, i) {
-                        final c = comments[i] as Map<String, dynamic>;
+                        final c = comments[i];  // ← cast to Comment, not Map
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor:
-                                primaryColor.withValues(alpha: 0.2),
+                            backgroundColor: primaryColor.withValues(alpha: 0.2),
                             child: Text(
-                              (c['creator']?['name'] ?? 'U')[0]
-                                  .toUpperCase(),
+                              (c.creator?['name'] ?? 'U')[0].toUpperCase(),
                               style: TextStyle(color: primaryColor),
                             ),
                           ),
-                          title: Text(c['creator']?['name'] ?? 'User',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize:   13)),
-                          subtitle: Text(c['content'] ?? '',
-                              style: const TextStyle(fontSize: 14)),
+                          title: Text(
+                            c.creator?['name'] ?? 'User',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          subtitle: Text(c.content, style: const TextStyle(fontSize: 14)),
                         );
                       },
                     );

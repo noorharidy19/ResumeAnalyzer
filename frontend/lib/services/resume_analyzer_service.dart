@@ -48,39 +48,65 @@ class ResumeAnalyzerService {
   }
 
   /// Get previously saved analysis
-  static Future<Map<String, dynamic>> getAnalysis(String analysisId) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/history/$analysisId'),
-      ).timeout(const Duration(seconds: 10));
+static Future<Map<String, dynamic>> getAnalysis(String analysisId) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token') ?? '';
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Error: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Failed to get analysis: $e');
+    final response = await http.get(
+      Uri.parse('$baseUrl/history/$analysisId'),
+      headers: {'Authorization': 'Bearer $token'},  // 👈 add this
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Error: ${response.statusCode}');
     }
+  } catch (e) {
+    throw Exception('Failed to get analysis: $e');
   }
+}
 
   /// List all saved analyses
-  static Future<List<Map<String, dynamic>>> listAnalyses() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/history'),
-      ).timeout(const Duration(seconds: 10));
+static Future<List<Map<String, dynamic>>> listAnalyses() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token') ?? '';
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['analyses'] ?? []);
-      } else {
-        throw Exception('Error: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Failed to list analyses: $e');
+    final response = await http.get(
+      Uri.parse('$baseUrl/history'),
+      headers: {'Authorization': 'Bearer $token'}, // 👈 was missing
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data['analyses'] ?? []);
+    } else {
+      throw Exception('Error: ${response.statusCode}');
     }
+  } catch (e) {
+    throw Exception('Failed to list analyses: $e');
   }
+}
+
+static Future<void> deleteAnalysis(String analysisId) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token') ?? '';
+
+    final response = await http.delete(
+      Uri.parse('$baseUrl/history/$analysisId'),
+      headers: {'Authorization': 'Bearer $token'}, // 👈 was missing
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Error: ${response.statusCode}');
+    }
+  } catch (e) {
+    throw Exception('Failed to delete analysis: $e');
+  }
+}
 
   /// Download analysis as JSON
   static Future<void> downloadAnalysis(String analysisId) async {
@@ -99,18 +125,4 @@ class ResumeAnalyzerService {
     }
   }
 
-  /// Delete analysis
-  static Future<void> deleteAnalysis(String analysisId) async {
-    try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/history/$analysisId'),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Error: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Failed to delete analysis: $e');
-    }
-  }
 }

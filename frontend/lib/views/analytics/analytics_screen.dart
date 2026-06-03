@@ -60,10 +60,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             .map((e) => e['analysis_id']?.toString() ?? '')
             .where((e) => e.isNotEmpty)
             .toList();
-        final fetched = await Future.wait(
-            ids.map((id) => ResumeAnalyzerService.getAnalysis(id)));
-        details = fetched;
-      }
+        final results = await Future.wait(
+        ids.map((id) => ResumeAnalyzerService.getAnalysis(id)
+            .catchError((_) => <String, dynamic>{})),  
+      );
+      details = results.where((r) => r.isNotEmpty).toList(); 
+    }
 
       List<Map<String, dynamic>> filteredAnalyses = [];
 
@@ -180,46 +182,62 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   // ── Clear all analytics data ──────────────────────────────────────────────
-  void _clearAll() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Clear Analytics?'),
-        content: const Text(
-            'This will clear all displayed analytics data. '
-            'Your saved analyses on the server are not deleted.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
-              Navigator.pop(context);
+  Future<void> _clearAll() async {
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Delete All Analyses?'),
+      content: const Text(
+          'This will permanently delete all your analyses from the server. This cannot be undone.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: () async {
+            Navigator.pop(context);
+            setState(() => isLoading = true);
+            try {
+              // Delete every analysis from the server
+              final ids = fullAnalyses
+                  .map((e) => e['analysis_id']?.toString() ?? '')
+                  .where((id) => id.isNotEmpty)
+                  .toList();
+              await Future.wait(
+                  ids.map((id) => ResumeAnalyzerService.deleteAnalysis(id)));
+              // Now clear local state
               setState(() {
-                history             = [];
-                fullAnalyses        = [];
-                totalResumes        = 0;
-                totalJobsMatched    = 0;
+                history = [];
+                fullAnalyses = [];
+                totalResumes = 0;
+                totalJobsMatched = 0;
                 totalSkillsMentions = 0;
-                avgMatchScore       = 0;
-                avgExperienceYears  = 0;
-                topSkills           = {};
-                recentScores        = [];
+                avgMatchScore = 0;
+                avgExperienceYears = 0;
+                topSkills = {};
+                recentScores = [];
+                isLoading = false;
               });
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content:         Text('Analytics cleared. Tap refresh to reload.'),
-                backgroundColor: Colors.orange,
-                duration:        Duration(seconds: 3),
+                content: Text('All analyses deleted.'),
+                backgroundColor: Colors.green,
               ));
-            },
-            child: const Text('Clear', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
+            } catch (e) {
+              setState(() => isLoading = false);
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text('Failed to delete: $e'),
+                backgroundColor: Colors.red,
+              ));
+            }
+          },
+          child: const Text('Delete All', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
 
   // ── Metric card ────────────────────────────────────────────────────────────
   Widget _metricCard(String value, String label, IconData icon) {

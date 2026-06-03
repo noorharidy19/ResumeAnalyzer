@@ -9,7 +9,7 @@ nlp = spacy.load("en_core_web_sm")
 
 
 # ─────────────────────────────
-# STEP 1 — CHECK PDF
+# STEP 1 — CHECK PDF & file
 # ─────────────────────────────
 def receive_pdf(file_path: str) -> Path:
     path = Path(file_path)
@@ -21,7 +21,7 @@ def receive_pdf(file_path: str) -> Path:
 
 
 # ─────────────────────────────
-# STEP 2 — EXTRACT TEXT
+# STEP 2 — EXTRACT TEXT (page by page using pdfplumber)
 # ─────────────────────────────
 def extract_text(pdf_path: Path) -> str:
     text = ""

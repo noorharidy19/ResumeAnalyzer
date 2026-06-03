@@ -31,6 +31,36 @@ if not api_key.startswith('gsk_'):
 
 client = Groq(api_key=api_key)
 
+
+def compute_score_from_phase2(phase1_result: dict, phase2_result: dict) -> dict:
+    top_match    = phase2_result.get("matches", [{}])[0]
+    gap          = top_match.get("skill_gap", {})
+    match_score  = top_match.get("match_score", 0)
+    coverage     = gap.get("coverage_pct", 0)
+    internships  = phase1_result.get("internship_count", 0)
+    exp_years    = phase1_result.get("experience_years", 0)
+    projects     = phase1_result.get("projects", [])
+    missing_req  = gap.get("missing_required", [])
+    matched_req  = gap.get("matched_required", [])
+
+    # Score breakdown components
+    skills_score = round(coverage * 0.40)           # max 40
+    exp_score    = min((internships * 8) + (int(exp_years) * 5), 25)  # max 25
+    proj_score   = min(len(projects) * 5, 20)        # max 20
+    gap_penalty  = len(missing_req) * 2              # -2 per missing required skill
+
+    overall = max(0, min(skills_score + exp_score + proj_score - gap_penalty, 100))
+
+    return {
+        "overall_score": overall,
+        "score_breakdown": {
+            "skills_match": f"+{skills_score} — {coverage}% coverage of required skills ({len(matched_req)} matched)",
+            "experience":   f"+{exp_score} — {internships} internship(s), {int(exp_years)} year(s) experience",
+            "projects":     f"+{proj_score} — {len(projects)} project(s) detected",
+            "gaps":         f"-{gap_penalty} — {len(missing_req)} missing required skill(s): {', '.join(missing_req[:3]) or 'none'}",
+        }
+    }
+    
 # ─────────────────────────────────────────────────────────────────────────────
 # VALIDATION — anti-hallucination
 # ─────────────────────────────────────────────────────────────────────────────
@@ -97,6 +127,56 @@ def validate_llm_output(phase3_result: dict, phase1_result: dict, phase2_result:
     return phase3_result
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# MODIFIED PART — Score is now computed from Phase 2 data, not by the LLM
+# ─────────────────────────────────────────────────────────────────────────────
+def compute_score_from_phase2(phase1_result: dict, phase2_result: dict) -> dict:
+    """
+    Computes overall_score and score_breakdown deterministically from Phase 2 data.
+    This replaces the LLM-generated score to avoid hallucination and inconsistency.
+ 
+    Breakdown:
+      - skills_match : up to 40 points  (based on coverage_pct of required skills)
+      - experience   : up to 25 points  (internships × 8 + experience_years × 5)
+      - projects     : up to 20 points  (number of projects × 5)
+      - gaps penalty : -2 per missing required skill
+    """
+    top_match   = phase2_result.get("matches", [{}])[0]
+    gap         = top_match.get("skill_gap", {})
+    coverage    = gap.get("coverage_pct", 0)
+    internships = phase1_result.get("internship_count", 0)
+    exp_years   = phase1_result.get("experience_years", 0)
+    projects    = phase1_result.get("projects", [])
+    missing_req = gap.get("missing_required", [])
+    matched_req = gap.get("matched_required", [])
+ 
+    skills_score = round(coverage * 0.40)                          # max 40
+    exp_score    = min((internships * 8) + (int(exp_years) * 5), 25)  # max 25
+    proj_score   = min(len(projects) * 5, 20)                      # max 20
+    gap_penalty  = len(missing_req) * 2                            # -2 per missing skill
+ 
+    overall = max(0, min(skills_score + exp_score + proj_score - gap_penalty, 100))
+ 
+    return {
+        "overall_score": overall,
+        "score_breakdown": {
+            "skills_match": (
+                f"+{skills_score} — {coverage}% coverage of required skills "
+                f"({len(matched_req)} matched)"
+            ),
+            "experience": (
+                f"+{exp_score} — {internships} internship(s), "
+                f"{int(exp_years)} year(s) experience"
+            ),
+            "projects": (
+                f"+{proj_score} — {len(projects)} project(s) detected"
+            ),
+            "gaps": (
+                f"-{gap_penalty} — {len(missing_req)} missing required skill(s): "
+                f"{', '.join(missing_req[:3]) or 'none'}"
+            ),
+        }
+    }
 
 # ─────────────────────────────
 # PROMPTS
@@ -112,9 +192,8 @@ Phase 2 recommendations already contain: skill, priority, resource, url, est_hou
 Rules:
 - Use ONLY skills, matched skills, and missing skills present in Phase 2.
 - Do not invent new skill gaps.
-- overall_score must be calculated from score_breakdown: add the positive values and subtract the gaps. 
-- Do NOT default to 80. A candidate with no experience and many gaps should score 50-65. 
-- A strong candidate with internships and high coverage should score 75-90.
+- overall_score and score_breakdown will be injected programmatically — set both to null in your response.- Do NOT default to 80. A candidate with no experience and many gaps should score 50-65. 
+- Focus only on strengths, weaknesses, improvements, and summary based on the candidate's actual data.
 - Career path reason must use matched_required/matched_preferred skills only.
 - Learning roadmap MUST include ALL skills listed in Phase 2 recommendations, not just those missing from the top job. Include every skill from the recommendations list.
 - Each roadmap item must copy resource, url, est_hours from Phase 2 recommendations exactly.
@@ -160,13 +239,8 @@ Generate a professional AI analysis in this exact JSON format:
  
 {{
   "resume_feedback": {{
-    "overall_score": <integer 0-100>,
-    "score_breakdown": {{
-        "skills_match":   "<e.g. +35 — strong Python/ML coverage>",
-        "experience":     "<e.g. +20 — 2 internships>",
-        "projects":       "<e.g. +15 — relevant NLP project>",
-        "gaps":           "<e.g. -15 — missing TensorFlow, Docker>"
-    }},
+    "overall_score": null,
+    "score_breakdown": null,
     "strengths":    [<string>, ...],
     "weaknesses":   [<string>, ...],
     "improvements": [<string>, ...],
@@ -250,6 +324,9 @@ def run_phase3(phase1_result: dict, phase2_result: dict) -> dict:
         cleaned = clean_json_response(raw)
 
         result = json.loads(cleaned)
+        computed = compute_score_from_phase2(phase1_result, phase2_result)
+        result["resume_feedback"]["overall_score"]   = computed["overall_score"]
+        result["resume_feedback"]["score_breakdown"] = computed["score_breakdown"]
         result = validate_llm_output(result, phase1_result, phase2_result)
      
         print("[Phase 3] ✅ AI analysis completed.")

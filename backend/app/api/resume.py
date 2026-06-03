@@ -164,53 +164,77 @@ async def analyze_resume(
 
 
 @router.get("/history/{analysis_id}")
-async def get_analysis(analysis_id: str):
-    """
-    Retrieve a previously saved analysis by ID
-    
-    Returns the complete analysis (Phase 1, 2, 3)
-    """
+async def get_analysis(
+    analysis_id: str,
+    current_user: User = Depends(get_current_user),
+):
     try:
-        file_path = os.path.join(UPLOAD_DIR, f"{analysis_id}.json")
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="Analysis not found")
+        from app.db.database import SessionLocal
+        from app.models.resume_analysis import ResumeAnalysis
+
+        db = SessionLocal()
+        try:
+            record = db.query(ResumeAnalysis).filter(
+                ResumeAnalysis.analysis_id == analysis_id,
+                ResumeAnalysis.user_id     == str(current_user.id),
+            ).first()
+            if not record:
+                raise HTTPException(status_code=404, detail="Analysis not found")
+
+            file_path = os.path.join(UPLOAD_DIR, f"{analysis_id}.json")
+            if not os.path.exists(file_path):
+                # ── Orphaned DB record: file was deleted, clean up DB too ──
+                db.delete(record)
+                db.commit()
+                raise HTTPException(status_code=404, detail="Analysis not found")
+
+        finally:
+            db.close()
 
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Analysis not found")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving analysis: {str(e)}")
-
-
-@router.get("/history")
-async def list_analyses():
-    """
-    List all saved analyses
     
-    Returns list of analysis metadata
+@router.get("/history")
+async def list_analyses(
+    current_user: User = Depends(get_current_user),  # 👈 added
+):
+    """
+    List all analyses belonging to the current user.
     """
     try:
-        analyses = []
-        for filename in os.listdir(UPLOAD_DIR):
-            if filename.endswith(".json") and filename.startswith("analysis_"):
-                file_path = os.path.join(UPLOAD_DIR, filename)
-                with open(file_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    analyses.append({
-                        "analysis_id": data.get("analysis_id"),
-                        "filename": data.get("filename"),
-                        "timestamp": filename.replace("analysis_", "").replace(".json", ""),
-                    })
+        from app.db.database import SessionLocal
+        from app.models.resume_analysis import ResumeAnalysis
 
-        # Sort by timestamp (newest first)
-        analyses.sort(key=lambda x: x["timestamp"], reverse=True)
+        db = SessionLocal()
+        try:
+            records = (
+                db.query(ResumeAnalysis)
+                .filter(ResumeAnalysis.user_id == str(current_user.id))
+                .order_by(ResumeAnalysis.id.desc())
+                .all()
+            )
+            analyses = [
+                {
+                    "analysis_id": r.analysis_id,
+                    "filename":    r.filename,
+                    "timestamp":   r.analysis_id.replace("analysis_", ""),
+                }
+                for r in records
+            ]
+        finally:
+            db.close()
+
         return {"analyses": analyses, "count": len(analyses)}
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error listing analyses: {str(e)}")
-
 
 @router.get("/download/{analysis_id}")
 async def download_analysis(analysis_id: str):

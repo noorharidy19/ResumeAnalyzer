@@ -59,6 +59,13 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
     });
   }
 
+  String _buildImageUrl(String path) {
+  if (path.isEmpty) return '';
+  if (path.startsWith('http')) return path;
+  // Normalize: strip any leading slashes, then add exactly one
+  return 'http://192.168.1.28:8001/${path.replaceFirst(RegExp(r'^/+'), '')}';
+}
+
   Future<void> _saveProfile() async {
     if (nameController.text.isEmpty || phoneController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -185,7 +192,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                           auth.profilePicture!.isNotEmpty
                       ? DecorationImage(
                           image: NetworkImage(
-                            'http://192.168.1.28:8001/${auth.profilePicture!.replaceAll(r'\', '/')}',
+                            _buildImageUrl(auth.profilePicture!),
                           ),
                           fit: BoxFit.cover,
                         )
@@ -212,11 +219,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                         final prefs = await SharedPreferences.getInstance();
                         if (!mounted) return;
                         final newPic = prefs.getString('profile_picture');
-                        if (newPic != null) {
-                          ref
-                              .read(authProvider.notifier)
-                              .updateProfilePicture(newPic);
-                        }
+                        ref.read(authProvider.notifier).updateProfilePicture(newPic ?? '');
                         widget.onProfileUpdated?.call(null, newPic);
                       },
                     ),

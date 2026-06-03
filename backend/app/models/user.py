@@ -9,7 +9,6 @@ from sqlalchemy.orm import relationship
 class User(Base):
     __tablename__ = "users"
 
-    # 👇 UUID بدل Integer
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
 
     name = Column(String, nullable=False)

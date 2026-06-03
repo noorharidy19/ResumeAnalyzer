@@ -31,6 +31,13 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
     currentImageUrl = widget.profilePictureUrl;
   }
 
+  String _buildImageUrl(String path) {
+  if (path.isEmpty) return '';
+  if (path.startsWith('http')) return path;
+  // Normalize: strip any leading slashes, then add exactly one
+  return 'http://192.168.1.28:8001/${path.replaceFirst(RegExp(r'^/+'), '')}';
+}
+
   Future<void> _uploadNewPicture() async {
     final ImagePicker picker = ImagePicker();
     try {
@@ -160,7 +167,7 @@ class _ProfilePictureViewerState extends State<ProfilePictureViewer> {
                 child: Stack(
                   children: [
                     Image.network(
-                      'http://192.168.1.28:8001/$currentImageUrl',
+                      _buildImageUrl(currentImageUrl),
                       width:  imgSize,
                       height: imgSize,
                       fit:    BoxFit.cover,
