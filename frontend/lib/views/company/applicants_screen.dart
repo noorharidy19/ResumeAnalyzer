@@ -641,6 +641,10 @@ class _ApplicantDetailScreenState extends State<ApplicantDetailScreen> {
             ),
           const SizedBox(height: 20),
 
+          // ── CV Section ───────────────────────────────────────────
+          _CvSection(resumeSnapshot: _app!['resume_snapshot'] as Map<String, dynamic>?),
+          const SizedBox(height: 20),
+
           // ── Action buttons ───────────────────────────────────────
           Row(
             children: [
@@ -700,6 +704,294 @@ class _ApplicantDetailScreenState extends State<ApplicantDetailScreen> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CV Section — renders Phase 1 resume_snapshot
+// ─────────────────────────────────────────────────────────────────────────────
+class _CvSection extends StatefulWidget {
+  final Map<String, dynamic>? resumeSnapshot;
+  const _CvSection({required this.resumeSnapshot});
+
+  @override
+  State<_CvSection> createState() => _CvSectionState();
+}
+
+class _CvSectionState extends State<_CvSection> {
+  bool _expanded = false;
+
+  static const _primary = Color(0xFF5C6BC0);
+  static const _accent  = Color(0xFF3F51B5);
+
+  @override
+  Widget build(BuildContext context) {
+    final cv = widget.resumeSnapshot;
+
+    return Card(
+      elevation: 2,
+      color:     Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        children: [
+          // ── Collapsible header ──────────────────────────────────
+          InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color:        _primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.description_outlined,
+                        color: _primary, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Candidate CV',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ),
+                  if (cv == null)
+                    Text('Not available',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.color)),
+                  Icon(
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: _primary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Expanded content ────────────────────────────────────
+          if (_expanded && cv != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Divider(),
+                  const SizedBox(height: 8),
+
+                  // Personal info
+                  _CvRow(Icons.person_outline, 'Name',
+                      cv['name'] as String?),
+                  _CvRow(Icons.email_outlined, 'Email',
+                      cv['email'] as String?),
+                  _CvRow(Icons.phone_outlined, 'Phone',
+                      cv['phone'] as String?),
+                  _CvRow(Icons.location_on_outlined, 'Location',
+                      cv['location'] as String?),
+                  _CvRow(Icons.link, 'GitHub',
+                      cv['github'] as String?),
+                  _CvRow(Icons.work_history_outlined,
+                      'Experience (years)',
+                      cv['experience_years'] != null
+                          ? '${cv['experience_years']}'
+                          : null),
+                  _CvRow(Icons.badge_outlined, 'Internships',
+                      cv['internship_count'] != null
+                          ? '${cv['internship_count']}'
+                          : null),
+
+                  // Skills
+                  if (cv['skills'] is List &&
+                      (cv['skills'] as List).isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    _CvSubHeading(
+                        icon:  Icons.psychology_outlined,
+                        label: 'Skills',
+                        color: _accent),
+                    const SizedBox(height: 8),
+                    _TagWrap(
+                      tags:  (cv['skills'] as List).cast<String>(),
+                      color: _primary,
+                    ),
+                  ],
+
+                  // Education
+                  if (cv['education'] is List &&
+                      (cv['education'] as List).isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    _CvSubHeading(
+                        icon:  Icons.school_outlined,
+                        label: 'Education',
+                        color: Colors.teal),
+                    const SizedBox(height: 6),
+                    ...(cv['education'] as List)
+                        .cast<Map<String, dynamic>>()
+                        .map((e) => _CvBullet(
+                              title: e['institution'] as String? ?? '',
+                              sub:   [
+                                if (e['degree'] != null)
+                                  e['degree'] as String,
+                                if (e['year'] != null)
+                                  e['year'] as String,
+                              ].join(' · '),
+                            )),
+                  ],
+
+                  // Projects
+                  if (cv['projects'] is List &&
+                      (cv['projects'] as List).isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    _CvSubHeading(
+                        icon:  Icons.folder_outlined,
+                        label: 'Projects',
+                        color: Colors.deepPurple),
+                    const SizedBox(height: 6),
+                    ...(cv['projects'] as List)
+                        .cast<String>()
+                        .map((p) => Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 2),
+                              child: Row(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(Icons.arrow_right,
+                                      size: 18,
+                                      color: Colors.deepPurple),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                      child: Text(p,
+                                          style: const TextStyle(
+                                              fontSize: 13))),
+                                ],
+                              ),
+                            )),
+                  ],
+                ],
+              ),
+            ),
+
+          // ── Collapsed but cv is null ────────────────────────────
+          if (_expanded && cv == null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text(
+                'No CV data was saved with this application.',
+                style: TextStyle(
+                    color:
+                        Theme.of(context).textTheme.bodySmall?.color),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CvRow extends StatelessWidget {
+  final IconData icon;
+  final String   label;
+  final String?  value;
+  const _CvRow(this.icon, this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    if (value == null || value!.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon,
+              size:  15,
+              color: Theme.of(context).textTheme.bodySmall?.color),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 110,
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.color)),
+          ),
+          Expanded(
+            child: Text(value!,
+                style: const TextStyle(fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CvSubHeading extends StatelessWidget {
+  final IconData icon;
+  final String   label;
+  final Color    color;
+  const _CvSubHeading(
+      {required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(label,
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize:   13,
+                  color:      color)),
+        ],
+      );
+}
+
+class _CvBullet extends StatelessWidget {
+  final String title;
+  final String sub;
+  const _CvBullet({required this.title, required this.sub});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.circle, size: 6, color: Colors.teal),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 13)),
+                  if (sub.isNotEmpty)
+                    Text(sub,
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.color)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 class _LargeScore extends StatelessWidget {
   final int     score;
   final String? verdict;

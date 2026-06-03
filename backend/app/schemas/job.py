@@ -104,9 +104,10 @@ class ApplicationResponse(BaseModel):
     id:              int
     job_id:          int
     user_id:         str
+    resume_snapshot: Optional[Any]      # ← ADD THIS LINE
     match_score:     Optional[float]
     verdict:         Optional[VerdictEnum]
-    ai_screening:    Optional[Any]           # full AIScreeningResult dict
+    ai_screening:    Optional[Any]
     status:          ApplicationStatusEnum
     applied_at:      datetime
     reviewed_at:     Optional[datetime]
@@ -115,7 +116,6 @@ class ApplicationResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
 
 class ApplicationListResponse(BaseModel):
     """Lightweight version for the company's applicant list."""
